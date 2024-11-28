@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>View Attendance</title>
+</head>
+<body>
+    <h2>Attendance for Batch: {{ batch_id }} | Course: {{ course_code }}</h2>
+    
+    <table border="1">
+        <thead>
+            <tr>
+                <th>Roll Number</th>
+                <th>Name</th>
+                <th>Batch</th>
+                <th>Photo</th>
+                <th>Attendance Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for student in students %}
+                <tr>
+                    <td>{{ student['Roll Number'] }}</td>
+                    <td>{{ student['Name'] }}</td>
+                    <td>{{ student['Batch'] }}</td>
+                    <td>
+                        {% if student['Photo'] != "N/A" %}
+                            <img src="{{ student['Photo'] }}" alt="Student Photo" width="50">
+                        {% else %}
+                            No Photo
+                        {% endif %}
+                    </td>
+                    <td>{{ student['Attendance Status'] }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>

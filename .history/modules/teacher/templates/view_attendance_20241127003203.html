@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>View Attendance</title>
+    <style>
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+        th {
+            background-color: #f4f4f4;
+        }
+        .btn {
+            padding: 5px 10px;
+            margin: 5px;
+            cursor: pointer;
+        }
+        .btn-absent {
+            background-color: red;
+            color: white;
+        }
+        .btn-present {
+            background-color: green;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <h2>Attendance List</h2>
+    <div id="controls">
+        <button onclick="markAllAbsent()">Mark All Absent</button>
+        <button onclick="downloadAttendance()">Download CSV</button>
+        <button onclick="saveAttendance()">Save Changes</button>
+    </div>
+    <table id="attendanceTable">
+        <thead>
+            <tr>
+                <th>Roll No</th>
+                <th>Name</th>
+                <th>Batch</th>
+                <th>Photo</th>
+                <th>Attendance Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Rows will be dynamically populated -->
+        </tbody>
+    </table>
+    <script></script>
+</body>
+</html>

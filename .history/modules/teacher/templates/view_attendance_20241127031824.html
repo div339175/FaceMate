@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>View Attendance</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        .attendance-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        .attendance-table th, .attendance-table td {
+            padding: 10px;
+            text-align: center;
+            border: 1px solid #ddd;
+        }
+        .toggle-btn {
+            cursor: pointer;
+            padding: 5px 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+        .toggle-btn.absent {
+            background-color: #f44336;
+        }
+        .student-photo {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+        .mark-all-absent {
+            margin: 20px 0;
+            padding: 10px 20px;
+            background-color: #ff9800;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        .save-btn {
+            padding: 10px 20px;
+            background-color: #2196F3;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>Attendance for {{ course_code }} - Batch {{ batch_id }}</h1>
+
+    <!-- Button to mark all absent -->
+    <button class="mark-all-absent" onclick="markAllAbsent()">Mark All Absent</button>
+
+    <!-- Attendance Table -->
+    <table class="attendance-table">
+        <thead>
+            <tr>
+                <th>Photo</th>
+                <th>Name</th>
+                <th>Roll No</th>
+                <th>Attendance</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for student in students %}
+            <tr id="student-{{ student.roll_no }}">
+                <td><img src="{{ student.photo_path }}" alt="Photo" class="student-photo"></td>
+                <td>{{ student.name }}</td>
+                <td>{{ student.roll_no }}</td>
+                <td>
+                    <button class="toggle-btn {{ 'absent' if student.attendance == 'Absent' else '' }}"
+                            onclick="toggleAttendance('{{ student.roll_no }}')">
+                        {{ student.attendance }}
+                    </button>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- Save Button -->
+    <button class="save-btn" onclick="saveAttendance()">Save</button>
+
+    <script>
+        // Function to toggle attendance status
+        function toggleAttendance(rollNo) {
+            const btn = document.querySelector(`#student-${rollNo} .toggle-btn`);
+            if (btn.classList.contains('absent')) {
+                btn.classList.remove('absent');
+                btn.textContent = 'Present';
+            } else {
+                btn.classList.add('absent');
+                btn.textContent = 'Absent';
+            }
+        }
+
+        // Function to mark all students as absent
+        function markAllAbsent() {
+            const allBtns = document.querySelectorAll('.toggle-btn');
+            allBtns.forEach(btn => {
+                if (!btn.classList.contains('absent')) {
+                    btn.classList.add('absent');
+                    btn.textContent = 'Absent';
+                }
+            });
+        }
+
+        // Function to save the attendance changes
+        function saveAttendance() {
+            const attendanceData = [];
+            const allRows = document.querySelectorAll('tbody tr');
+            allRows.forEach(row => {
+                const rollNo = row.id.replace('student-', '');
+                const attendance = row.querySelector('.toggle-btn').textContent.trim();
+                attendanceData.push({ roll_no: rollNo, attendance: attendance });
+            });
+
+            // Send the updated attendance data to the server to save it in the CSV
+            fetch('/save_attendance', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ attendance_data: attendanceData, course_code: '{{ course_code }}', batch_id: '{{ batch_id }}' })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Attendance saved successfully!');
+                } else {
+                    alert('Failed to save attendance');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error saving attendance');
+            });
+        }
+    </script>
+</body>
+</html>

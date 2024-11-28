@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register as Student</title>
+    <style>
+        /* Add some basic CSS for styling */
+        .container {
+            width: 60%;
+            margin: auto;
+            padding: 20px;
+            background-color: #f9f9f9;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        h2 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            font-weight: bold;
+        }
+        input[type="text"], input[type="email"], input[type="password"] {
+            width: 100%;
+            padding: 10px;
+            margin-top: 5px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+        .button-container {
+            display: flex;
+            justify-content: space-between;
+        }
+        button {
+            padding: 10px 20px;
+            border: none;
+            background-color: #4CAF50;
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #cameraFrame {
+            border: 2px solid #ccc;
+            border-radius: 8px;
+            width: 320px;
+            height: 240px;
+            margin: 20px auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Register as Student</h2>
+        <form method="POST" action="{{ url_for('developer.register_student') }}" enctype="multipart/form-data">
+            <!-- Registration Form Inputs -->
+            <div class="form-group">
+                <label for="name">Name:</label>
+                <input type="text" name="name" required><br><br>
+            </div>
+
+            <div class="form-group">
+                <label for="email">Email:</label>
+                <input type="email" name="email" required><br><br>
+            </div>
+
+            <div class="form-group">
+                <label for="password">Password:</label>
+                <input type="password" name="password" required><br><br>
+            </div>
+
+            <div class="form-group">
+                <label for="roll_number">Roll Number:</label>
+                <input type="text" name="roll_number" required><br><br>
+            </div>
+
+            <div class="form-group">
+                <label for="enrollment_number">Enrollment Number:</label>
+                <input type="text" name="enrollment_number" required><br><br>
+            </div>
+
+            <div class="form-group">
+                <label for="year">Year:</label>
+                <input type="text" name="year" required><br><br>
+            </div>
+
+            <div class="form-group">
+                <label for="semester">Semester:</label>
+                <input type="text" name="semester" required><br><br>
+            </div>
+
+            <div class="button-container">
+                <button type="button" id="takeSampleButton">Take Photo Sample</button>
+                <button type="button" id="trainDataButton">Train Data</button>
+            </div>
+
+            <!-- Camera Frame -->
+            <div id="cameraFrame">
+                <video id="video" width="320" height="240" autoplay></video>
+            </div>
+
+            <button type="submit">Register</button>
+        </form>
+    </div>
+
+    <script>
+        let video = document.getElementById('video');
+        let takeSampleButton = document.getElementById('takeSampleButton');
+        let trainDataButton = document.getElementById('trainDataButton');
+        let photoCount = 0;
+        let capturing = false;
+
+        // Access the webcam
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(function(stream) {
+                video.srcObject = stream;
+            })
+            .catch(function(error) {
+                console.log('Error accessing the webcam:', error);
+            });
+
+        // Function to capture photos every 100ms
+        function capturePhoto() {
+            if (capturing) {
+                let canvas = document.createElement('canvas');
+                canvas.width = 320;
+                canvas.height = 240;
+                let ctx = canvas.getContext('2d');
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                let photoData = canvas.toDataURL('image/jpeg');
+
+                // Send the captured photo to the server (to save it)
+                let formData = new FormData();
+                formData.append('photo', photoData);
+                formData.append('roll_number', document.querySelector('[name="roll_number"]').value);
+                formData.append('name', document.querySelector('[name="name"]').value);
+
+                fetch("/developer/save_photo_sample", {  // Backend endpoint for saving photo
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Photo saved:', data);
+                });
+
+                photoCount++;
+                if (photoCount >= 30) {
+                    stopCapturing();
+                }
+            }
+        }
+
+        // Start capturing photos when the "Take Photo Sample" button is clicked
+        takeSampleButton.onclick = function() {
+            if (!capturing) {
+                capturing = true;
+                photoCount = 0;
+                takeSampleButton.innerText = "Stop Capturing";
+                setInterval(capturePhoto, 100);  // Capture every 100ms
+            } else {
+                stopCapturing();
+            }
+        };
+
+        // Stop capturing photos
+        function stopCapturing() {
+            capturing = false;
+            takeSampleButton.innerText = "Take Photo Sample";
+        }
+
+        // Train data when the "Train Data" button is clicked
+        trainDataButton.onclick = function() {
+            fetch("/train_classifier", {  // Backend endpoint for training
+                method: 'POST',
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Training completed:', data);
+            });
+        };
+    </script>
+</body>
+</html>

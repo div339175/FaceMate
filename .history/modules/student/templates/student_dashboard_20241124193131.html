@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Dashboard</title>
+    <style>
+         /* Basic styling */
+         body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+        }
+
+        /* Sidebar styling */
+        .sidebar {
+            width: 200px;
+            background-color: #333;
+            color: white;
+            height: 100vh;
+            padding-top: 60px;
+            box-sizing: border-box;
+            position: fixed;
+            left: -200px;
+            transition: left 0.3s;
+            overflow-y: auto;
+        }
+
+        .sidebar.active {
+            left: 0;
+        }
+
+        /* Toggle button styling */
+        .toggle-btn {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background-color: #333;
+            color: white;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            z-index: 1000;
+        }
+
+        /* Sidebar buttons styling */
+        .sidebar button {
+            background-color: #444;
+            color: white;
+            border: none;
+            padding: 10px;
+            width: 100%;
+            text-align: left;
+            margin-bottom: 10px;
+            cursor: pointer;
+        }
+
+        .sidebar button:hover {
+            background-color: #555;
+        }
+
+        /* Content styling */
+        .content {
+            margin-left: 20px;
+            padding: 20px;
+            flex: 1;
+            transition: margin-left 0.3s;
+        }
+
+        .content.expanded {
+            margin-left: 220px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Toggle button for the sidebar -->
+    <button class="toggle-btn" onclick="toggleSidebar()">☰</button>
+
+    <div class="sidebar" id="sidebar">
+        <button onclick="showStudentDetails()">Student Details</button>
+        <button onclick="showAttendance()">Attendance</button>
+    </div>
+    <div class="content" id="content">
+        <!-- This area will display student details by default -->
+    </div>
+
+    <script>
+
+        // Function to toggle sidebar
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const content = document.querySelector('.content');
+            sidebar.classList.toggle('active');
+            content.classList.toggle('expanded');
+        }
+
+        function showStudentDetails() {
+            document.getElementById("content").innerHTML = `
+
+            <div class="content" id="content">
+                <h1>Welcome, {{ student.name }}</h1>
+                <p><strong>Email:</strong> {{ student.email }}</p>
+                <p><strong>Roll Number:</strong> {{ student.roll_number }}</p>
+                <p><strong>Enrollment Number:</strong> {{ student.enrollment_number }}</p>
+                <p><strong>Batch:</strong> {{ student.batch}}</p>
+                <p><strong>Year:</strong> {{ student.year }}</p>
+                <p><strong>Semester:</strong> {{ student.semester }}</p>
+                {% if student.photo %}
+                <img src="{{ url_for('static', filename='uploads/' + student.photo) }}" alt="Profile Photo" style="width: 150px; height: 150px;">
+                {% endif %}
+            </div>
+         `;
+        }
+        const studentRollNo = "{{ student.roll_number }}"; // Pass roll number from backend to template
+        const activeSession = {{ "true" if active_session else "false" }};
+
+        
+        // Function to render the main dashboard view
+         function showDashboard() {
+            document.getElementById("stopRecognitionBtn").addEventListener("click", () => {
+                clearInterval(recognitionInterval);
+                const video = document.getElementById("cameraFeed");
+                video.style.display = "none";
+                if (recognitionStream) recognitionStream.getTracks().forEach(track => track.stop());
+                document.getElementById("statusMessage").innerText = "Face recognition stopped.";
+                document.getElementById("stopRecognitionBtn").style.display = "none";
+            });
+            
+            function stopVideoStream() {
+                const video = document.getElementById("cameraFeed");
+                video.style.display = "none";
+                if (window.stream) {
+                    window.stream.getTracks().forEach(track => track.stop());
+                    window.stream = null;
+                }
+            }
+            
+            window.addEventListener("beforeunload", () => {
+                if (window.stream) {
+                    window.stream.getTracks().forEach(track => track.stop());
+                }
+            });
+            
+        }
+
+        // Run the default view when the page loads
+        showStudentDetails();
+    </script>
+</body>
+</html>

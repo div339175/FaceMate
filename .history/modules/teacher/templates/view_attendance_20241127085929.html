@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>View Attendance</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        .container {
+            max-width: 1200px;
+            margin: auto;
+            padding: 20px;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .header input {
+            padding: 8px;
+            width: 300px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .student-card {
+            display: inline-block;
+            width: 100px;
+            text-align: center;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            margin: 10px;
+            padding: 15px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .student-photo {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin-bottom: 10px;
+        }
+        .toggle-btn {
+            cursor: pointer;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .toggle-btn.present {
+            background-color: #4CAF50;
+            color: white;
+        }
+        .toggle-btn.absent {
+            background-color: #f44336;
+            color: white;
+        }
+        .actions {
+            margin-top: 20px;
+            text-align: center;
+        }
+        .actions button {
+            padding: 10px 15px;
+            margin: 5px;
+            border: none;
+            border-radius: 4px;
+            background-color: #2196F3;
+            color: white;
+            cursor: pointer;
+        }
+        .actions button.download-btn {
+            background-color: #4CAF50;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Attendance for Batch {{ batch_id }}</h1>
+            <input type="text" id="searchBox" placeholder="Search by Roll Number" onkeyup="filterStudents()">
+        </div>
+
+        <div id="studentsContainer">
+            {% for student in students %}
+            <div class="student-card" id="student-{{ student['Roll Number'] }}">
+                <img src="{{ student['Photo'] }}" alt="Photo" class="student-photo">
+                <h3>{{ student['Name'] }}</h3>
+                <p>Roll No: {{ student['Roll Number'] }}</p>
+                <button class="toggle-btn {{ 'absent' if student['Attendance Status'] == 'Absent' else 'present' }}"
+                        onclick="toggleAttendance('{{ student['Roll Number'] }}')">
+                    {{ student['Attendance Status'] }}
+                </button>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="actions">
+            <button onclick="markAllAbsent()">Mark All Absent</button>
+            <button onclick="saveAttendance()">Save</button>
+        <!-- <a href="/teacher/download_report?course_code={{ course_code }}" class="download-report-btn">Download PDF Report</a> -->
+        </div>
+    </div>
+
+    <script>
+        // Toggle attendance status
+        function toggleAttendance(rollNo) {
+            const btn = document.querySelector(`#student-${rollNo} .toggle-btn`);
+            if (btn.classList.contains('absent')) {
+                btn.classList.remove('absent');
+                btn.classList.add('present');
+                btn.textContent = 'Present';
+            } else {
+                btn.classList.remove('present');
+                btn.classList.add('absent');
+                btn.textContent = 'Absent';
+            }
+        }
+
+        // Mark all students as absent
+        function markAllAbsent() {
+            const allBtns = document.querySelectorAll('.toggle-btn');
+            allBtns.forEach(btn => {
+                btn.classList.remove('present');
+                btn.classList.add('absent');
+                btn.textContent = 'Absent';
+            });
+        }
+
+        const courseCode = "{{ course_code }}";
+
+        function saveAttendance() {
+            const attendanceData = [];
+            const allCards = document.querySelectorAll('.student-card');
+            allCards.forEach(card => {
+                const rollNo = card.id.replace('student-', '');
+                const attendance = card.querySelector('.toggle-btn').textContent.trim();
+                attendanceData.push({ roll_no: rollNo, attendance: attendance });
+            });
+        
+            // Send the updated data to the server
+            fetch('/teacher/save_attendance', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    attendance_data: attendanceData,
+                    course_code: '{{ course_code }}' // Send course_code instead of batch_id
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Attendance saved successfully!');
+                } else {
+                    alert(`Failed to save attendance: ${data.error}`);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error saving attendance');
+            });
+        }
+        
+    </script>
+</body>
+</html>

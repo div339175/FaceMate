@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Dashboard</title>
+    <style>
+        /* Basic styling */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+        }
+
+        /* Sidebar styling */
+        .sidebar {
+            width: 200px;
+            background-color: #333;
+            color: white;
+            height: 100vh;
+            padding-top: 60px;
+            box-sizing: border-box;
+            position: fixed;
+            left: -200px;
+            transition: left 0.3s;
+            overflow-y: auto;
+        }
+
+        .sidebar.active {
+            left: 0;
+        }
+
+        /* Toggle button styling */
+        .toggle-btn {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background-color: #333;
+            color: white;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            z-index: 1000;
+        }
+
+        /* Sidebar buttons styling */
+        .sidebar button {
+            background-color: #444;
+            color: white;
+            border: none;
+            padding: 10px;
+            width: 100%;
+            text-align: left;
+            margin-bottom: 10px;
+            cursor: pointer;
+        }
+
+        .sidebar button:hover {
+            background-color: #555;
+        }
+
+        /* Content styling */
+        .content {
+            margin-left: 20px;
+            padding: 20px;
+            flex: 1;
+            transition: margin-left 0.3s;
+        }
+
+        .content.expanded {
+            margin-left: 220px;
+        }
+
+        .active-session {
+            color: green;
+            font-weight: bold;
+        }
+
+        .inactive-session {
+            color: red;
+        }
+
+        .badge {
+            padding: 5px 10px;
+            border-radius: 5px;
+            color: white;
+        }
+
+        .bg-success {
+            background-color: #28a745;
+        }
+
+        .bg-secondary {
+            background-color: #6c757d;
+        }
+    </style>
+</head>
+<body>
+    <!-- Toggle button for the sidebar -->
+    <button class="toggle-btn" onclick="toggleSidebar()">☰</button>
+
+    <div class="sidebar" id="sidebar">
+        <button onclick="showStudentDetails()">Student Details</button>
+        <button onclick="showAttendance()">Attendance</button>
+    </div>
+    <div class="content" id="content">
+        <!-- This area will display student details by default -->
+    </div>
+
+    <script>
+        // Ensure activeSession is properly defined
+    const activeSession = {{ active_session | tojson | default(false) }}; // True if active session exists, else false
+    const activeSessionsData = {{ active_sessions | tojson }};
+    const studentRollNo = "{{ student.roll_number }}";
+
+
+    // Function to toggle sidebar
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const content = document.querySelector('.content');
+            sidebar.classList.toggle('active');
+            content.classList.toggle('expanded');
+        }
+
+        function showStudentDetails() {
+            document.getElementById("content").innerHTML = `
+                <h1>Welcome, {{ student.name }}</h1>
+                <p><strong>Email:</strong> {{ student.email }}</p>
+                <p><strong>Roll Number:</strong> {{ student.roll_number }}</p>
+                <p><strong>Enrollment Number:</strong> {{ student.enrollment_number }}</p>
+                <p><strong>Batch:</strong> {{ student.batch_id }}</p>
+                <p><strong>Year:</strong> {{ student.year }}</p>
+                <p><strong>Semester:</strong> {{ student.semester }}</p>
+                {% if student.photo %}
+                    <img src="{{ url_for('static', filename='uploads/' + student.photo) }}" alt="Profile Photo" style="width: 150px; height: 150px;">
+                {% endif %}
+            `;
+        }
+        // Function to load attendance options and show active sessions
+        function showAttendance() {
+
+            console.log("Active Session:", activeSession); // For debugging
+            console.log("Active Sessions Data:", activeSessionsData);
+       
+
+            if (activeSessionsData.length > 0) {
+                let sessionsHTML = `
+                    <h3>Your Courses and Active Sessions</h3>
+                    <ul>
+                `;
+                // Loop through active sessions data to display course name and session status
+                activeSessionsData.forEach(session => {
+                    sessionsHTML += `
+                        <li>
+                            <strong>${session.course_name} (${session.course_code})</strong><br>
+                            ${session.active_session ? 
+                                '<span class="badge bg-success">Active Attendance Session</span>' :
+                                '<span class="badge bg-secondary">No Active Session</span>'}
+                        </li>
+                    `;
+                });
+                sessionsHTML += '</ul>';
+    
+                // Append the sessions list to the content
+                document.getElementById("content").innerHTML = sessionsHTML;
+    
+                // Now handle the face recognition section if there is an active session
+                document.getElementById("content").innerHTML += `
+
+                    <style>
+                     body {
+                        font-family: Arial, sans-serif;
+                        background-color: #f4f4f9;
+                        display: flex;
+                        justify-content: center;
+                        align-items: center;
+                        height: 100vh;
+                        margin: 0;
+                    }
+                    .container {
+                        background-color: #fff;
+                        padding: 20px;
+                        border-radius: 8px;
+                        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                        text-align: center;
+                        width: 60%;
+                    }
+                    video {
+                        width: 100%;
+                        border-radius: 8px;
+                        display: none;
+                    }
+                    button {
+                        background-color: #4CAF50;
+                        color: white;
+                        border: none;
+                        padding: 10px 20px;
+                        border-radius: 4px;
+                        cursor: pointer;
+                        margin: 10px;
+                        font-size: 16px;
+                    }
+                    button:hover {
+                        background-color: #45a049;
+                    }
+                    #statusMessage {
+                        margin-top: 15px;
+                        font-size: 18px;
+                    }
+                </style>
+                    <div class="container">
+                    <h2 class="active-session">Active Session: Attendance is available.</h2>
+                    <button id="recognizeBtn">Start Face Recognition</button>
+                    <div id="cameraFeedContainer"></div>
+                    <button id="stopRecognitionBtn" style="display: none;">Stop Recognition</button>
+                    <p id="statusMessage"></p>
+                `;
+                initializeAttendanceFunctions(studentRollNo);
+            } else {
+                document.getElementById("content").innerHTML = `
+                    <h2 class="inactive-session">No active attendance session currently.</h2>
+                    <p>Please try again later when a session is active.</p>
+                `;
+            }
+        }
+
+        // Initialize camera and attendance functions
+        function initializeAttendanceFunctions(rollNo) {
+            let recognitionStream = null;
+            let recognitionInterval = null;
+
+            document.getElementById("recognizeBtn").addEventListener("click", async () => {
+                const video = document.createElement("video");
+                video.setAttribute("autoplay", "true");
+                document.getElementById("cameraFeedContainer").appendChild(video);
+                video.style.display = "block";  // Make sure the video feed is visible
+
+                try {
+                    recognitionStream = await navigator.mediaDevices.getUserMedia({ video: true });
+                    video.srcObject = recognitionStream;
+
+                    recognitionInterval = setInterval(async () => {
+                        const canvas = document.createElement("canvas");
+                        canvas.width = video.videoWidth;
+                        canvas.height = video.videoHeight;
+                        canvas.getContext("2d").drawImage(video, 0, 0);
+
+                        const photoData = canvas.toDataURL("image/jpeg");
+
+                        try {
+                            const response = await fetch('/student/recognize', {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ rollNO: rollNo, photoData })
+                            });
+
+                            const result = await response.json();
+                            document.getElementById("statusMessage").innerText = result.message;
+
+                            if (result.message === "Attendance Recorded") {
+                                clearInterval(recognitionInterval);
+                                video.style.display = "none";
+                                recognitionStream.getTracks().forEach(track => track.stop());
+                                alert("Attendance has been recorded.");
+                            }
+                        } catch (error) {
+                            console.error("Error recognizing face:", error);
+                        }
+                    }, 1000);
+                } catch (error) {
+                    console.error("Error starting recognition:", error);
+                    alert("Error starting recognition: " + error.message);
+                }
+            });
+
+            document.getElementById("stopRecognitionBtn").addEventListener("click", () => {
+                clearInterval(recognitionInterval);
+                const video = document.getElementById("cameraFeed");
+                video.style.display = "none";
+                if (recognitionStream) recognitionStream.getTracks().forEach(track => track.stop());
+                document.getElementById("statusMessage").innerText = "Face recognition stopped.";
+                document.getElementById("stopRecognitionBtn").style.display = "none";
+            });
+
+            window.addEventListener("beforeunload", () => {
+                if (recognitionStream) recognitionStream.getTracks().forEach(track => track.stop());
+            });
+        }
+
+        // Run the default view when the page loads
+        showStudentDetails();
+    </script>
+</body>
+</html>

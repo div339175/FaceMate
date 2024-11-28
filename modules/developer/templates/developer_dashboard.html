@@ -1,0 +1,29 @@
+<!-- modules/developer/templates/developer_dashboard.html -->
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Developer Dashboard</title>
+</head>
+<body>
+    
+    <h1>Welcome, Developer!</h1>
+        <nav>
+        <ul>
+            <li><a href="{{ url_for('developer.register_student') }}">Register Student</a></li>
+            <li><a href="{{ url_for('developer.register_teacher') }}">Register Teacher</a></li>
+        </ul>
+    </nav>
+
+    {% if get_flashed_messages() %}
+        <ul>
+            {% for message in get_flashed_messages() %}
+                <li>{{ message }}</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+
+    <p>Use the links above to register new students or teachers.</p>
+
+</body>
+</html>

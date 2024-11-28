@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Face Recognition Attendance</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            width: 60%;
+        }
+        video {
+            width: 100%;
+            border-radius: 8px;
+            display: none;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 10px;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #statusMessage {
+            margin-top: 15px;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+    <form action="{{ url_for('developer.submit_photo_sample') }}" method="POST" enctype="multipart/form-data">
+
+    <div class="container">
+        <h2>Face Recognition Attendance</h2>
+        <input type="text" id="rollNoInput" placeholder="Enter Roll Number" />
+        <button id="captureSamplesBtn">Capture Photo Samples</button>
+        <button id="stopCaptureBtn" style="display: none;">Stop Capturing Photo</button>
+        <p id="statusMessage"></p>
+        <video id="cameraFeed" autoplay></video>
+        <button id="trainDataBtn">Train Data</button>
+        <p id="trainStatusMessage"></p>
+    </div>
+</form>
+    <script>
+        let rollNo;
+        let recognitionInterval = null;
+
+        document.getElementById("captureSamplesBtn").addEventListener("click", async (e) => {
+            e.preventDefault(); // Prevent form submission
+            rollNo = document.getElementById("rollNoInput").value.trim();
+            if (!rollNo) {
+                alert("Please enter a Roll Number before capturing photo samples.");
+                return;
+            }
+        
+            const video = document.getElementById("cameraFeed");
+            video.style.display = "block";
+            document.getElementById("stopCaptureBtn").style.display = "block";
+        
+            try {
+                // Stop any previous stream
+                if (window.stream) {
+                    window.stream.getTracks().forEach(track => track.stop());
+                    window.stream = null;
+                }
+        
+                // Access the camera
+                window.stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                video.srcObject = window.stream;
+        
+                // Wait for the video to load its metadata
+                video.addEventListener("loadedmetadata", () => {
+                    video.play();
+                });
+        
+                let count = 0;
+                const captureInterval = setInterval(async () => {
+                    if (count < 25) {
+                        const canvas = document.createElement("canvas");
+                        canvas.width = video.videoWidth;
+                        canvas.height = video.videoHeight;
+                        const context = canvas.getContext("2d");
+                        context.drawImage(video, 0, 0);
+        
+                        const photoData = canvas.toDataURL("image/jpeg");
+                        count++;
+        
+                        // Send captured image data to the server
+                        try {
+                            const response = await fetch("/developer/save-photo", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ photoData, rollNo })
+                            });
+        
+                            if (!response.ok) {
+                                console.error(`Failed to save photo ${count}`);
+                            }
+                        } catch (error) {
+                            console.error("Error saving photo:", error);
+                        }
+        
+                        console.log(`Captured photo ${count}/25`);
+                    } else {
+                        clearInterval(captureInterval);
+                        stopCamera(video);
+                        document.getElementById("statusMessage").innerText = "Photo sample collection completed.";
+                        document.getElementById("stopCaptureBtn").style.display = "none";
+                    }
+                }, 100);
+            } catch (error) {
+                console.error("Error accessing the camera:", error);
+                alert("Error accessing the camera: " + error.message);
+            }
+        });
+        
+        document.getElementById("trainDataBtn").addEventListener("click", async (e) => {
+            e.preventDefault(); // Prevent form submission
+            const rollNo = document.getElementById("rollNoInput").value.trim();
+            if (!rollNo) {
+                alert("Please enter a Roll Number to train data.");
+                return;
+            }
+            document.getElementById("trainStatusMessage").innerText = "Training in progress...";
+
+            try {
+                const response = await fetch("/developer/trainData", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({rollNo})
+                });
+        
+                const result = await response.json();
+                if (response.ok) {
+                    document.getElementById("trainStatusMessage").innerText = result.message;
+                } else {
+                    document.getElementById("trainStatusMessage").innerText = result.message || "Training failed.";
+                }
+            } catch (error) {
+                console.error("Error training data:", error);
+                document.getElementById("trainStatusMessage").innerText = "Error training model.";
+            }
+        });
+        
+        
+        // Stop capturing photos and turn off the camera
+        document.getElementById("stopCaptureBtn").addEventListener("click", () => {
+            const video = document.getElementById("cameraFeed");
+            stopCamera(video);
+            document.getElementById("stopCaptureBtn").style.display = "none";
+            document.getElementById("statusMessage").innerText = "Photo capturing stopped.";
+        });
+        
+        // Function to stop the camera
+        function stopCamera(video) {
+            video.style.display = "none";
+            if (window.stream) {
+                window.stream.getTracks().forEach(track => track.stop());
+                window.stream = null;
+            }
+            video.srcObject = null;
+        }
+        
+
+    </script>
+</body>
+</html>

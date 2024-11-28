@@ -1,0 +1,79 @@
+<!-- <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attendance Report for {{ course_code }}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            font-size: 30px;
+            margin-bottom: 10px;
+        }
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+        }
+        .table th, .table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        .table th {
+            background-color: #f2f2f2;
+        }
+        .student-photo {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+        }
+        .summary {
+            text-align: center;
+            margin-top: 30px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Attendance Report</h1>
+        <p>Course Code: {{ course_code }}</p>
+    </div>
+
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Photo</th>
+                <th>Name</th>
+                <th>Roll Number</th>
+                <th>Attendance</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for student in students %}
+                <tr>
+                    <td><img src="{{ student['Photo'] }}" alt="Photo" class="student-photo"></td>
+                    <td>{{ student['Name'] }}</td>
+                    <td>{{ student['Roll Number'] }}</td>
+                    <td>{{ student['Attendance Status'] }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="summary">
+        <h3>Attendance Summary</h3>
+        <p>Total Students: {{ students|length }}</p>
+        <p>Total Present: {{ students|selectattr('Attendance Status', 'equalto', 'Present')|list|length }}</p>
+        <p>Total Absent: {{ students|selectattr('Attendance Status', 'equalto', 'Absent')|list|length }}</p>
+    </div>
+</body>
+</html> -->

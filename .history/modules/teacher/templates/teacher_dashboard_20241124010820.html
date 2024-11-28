@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teacher Dashboard</title>
+    <style>
+        /* Basic styling */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+        }
+
+        /* Sidebar styling */
+        .sidebar {
+            width: 200px;
+            background-color: #333;
+            color: white;
+            height: 100vh;
+            padding-top: 60px;
+            box-sizing: border-box;
+            position: fixed;
+            left: -200px;
+            transition: left 0.3s;
+            overflow-y: auto;
+        }
+
+        .sidebar.active {
+            left: 0;
+        }
+
+        /* Toggle button styling */
+        .toggle-btn {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background-color: #333;
+            color: white;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            z-index: 1000;
+        }
+
+        /* Sidebar buttons styling */
+        .sidebar button {
+            background-color: #444;
+            color: white;
+            border: none;
+            padding: 10px;
+            width: 100%;
+            text-align: left;
+            margin-bottom: 10px;
+            cursor: pointer;
+        }
+
+        .sidebar button:hover {
+            background-color: #555;
+        }
+
+        /* Content styling */
+        .content {
+            margin-left: 20px;
+            padding: 20px;
+            flex: 1;
+            transition: margin-left 0.3s;
+        }
+
+        .content.expanded {
+            margin-left: 220px;
+        }
+
+        /* Additional styling for attendance form */
+        input[type="text"] {
+            padding: 8px;
+            margin-bottom: 10px;
+        }
+
+        button {
+            padding: 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+        button:disabled {
+            background-color: #ccc;
+        }
+
+        /* Styling for attendance list */
+        #attendanceList {
+            margin-top: 20px; /* Line gap below "Take Attendance" button */
+        }
+
+        .student-item {
+            margin-bottom: 20px; /* Line gap between each student item */
+        }
+
+        .student-item img {
+            width: 100px;
+            height: 100px;
+            display: block;
+            margin-bottom: 5px; /* Small gap below the photo */
+        }
+
+        .student-item p {
+            margin: 0; /* Remove margins between paragraphs */
+        }
+
+        .student-item button {
+            margin-top: 5px; /* Small gap above the "Absent" button */
+        }
+    </style>
+</head>
+<body>
+    <!-- Toggle button for the sidebar -->
+    <button class="toggle-btn" onclick="toggleSidebar()">☰</button>
+
+    <!-- Sidebar with teacher details and attendance options -->
+    <div class="sidebar" id="sidebar">
+        <button onclick="showTeacherDetails()">Teacher Details</button>
+        <button onclick="showAttendance()">Attendance</button>
+    </div>
+
+    <!-- Main content area -->
+    <div class="content" id="content">
+        <!-- This area will display teacher details or attendance options -->
+    </div>
+
+    <script>
+        // Function to toggle sidebar
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const content = document.getElementById('content');
+            sidebar.classList.toggle('active');
+            content.classList.toggle('expanded');
+        }
+    
+        // Function to load teacher details from localStorage
+        function showTeacherDetails() {
+                       
+                document.getElementById("content").innerHTML = ` 
+                    <h2>Teacher Details</h2>
+                    <p><strong>Name:</strong> ${teacherData.name}</p>
+                    <p><strong>Course:</strong> ${teacherData.course}</p>
+                    <p><strong>Email:</strong> ${teacherData.email}</p>
+                    <p>Photo:</p>
+                    <img src="${teacherData.photo}" alt="Teacher Photo" style="width: 150px; height: 150px;">
+                `;
+        }
+        const studentRollNo = "{{ student.roll_number }}";
+        // Function to show attendance form
+        function showAttendance() {
+            document.getElementById("content").innerHTML = `
+                <h2>Take Attendance</h2>
+                <label for="batch">Enter Batch Number:</label>
+                <input type="text" id="batch" required><br>
+                <button onclick="takeAttendance()">Take Attendance</button>
+                <div id="attendanceList"></div>
+            `;
+        }
+    
+        function takeAttendance() {
+            const batch = document.getElementById('batch').value; // Corrected the ID
+            // Add logic to fetch and display students of the selected batch
+            fetchStudents(batch);
+        }
+    
+        function fetchStudents(batch) {
+            console.log("Fetching students for batch:", batch);  // Debug log
+    
+            // Example: Fetch student data from localStorage based on selected batch
+            let students = [];
+                try {
+                    // Check if student and batch exist
+                    if (student && student.batch === batch) {
+                        students.push(student);
+                    }
+                } catch (e) {
+                    // Catch and handle any JSON parsing errors
+                    console.error(`Error parsing data for key: ${key}`, e);
+                }
+            }
+            console.log("Fetched students:", students); // Debug log
+            displayAttendanceList(students);
+        
+
+        function displayAttendanceList(students) {
+            const attendanceList = document.getElementById('attendanceList');
+            attendanceList.innerHTML = '';
+    
+            if (students.length === 0) {
+                attendanceList.innerHTML = "<p>No students found for this batch.</p>";
+            }
+    
+            students.forEach(student => {
+                const attendanceStatus = student.attendanceStatus || 'Absent'; // Default to 'Absent' if not set
+    
+                const studentDiv = document.createElement('div');
+                studentDiv.classList.add('student-item');
+                studentDiv.innerHTML = `
+                    ${student.photo ? `<img src="${student.photo}" alt="${student.name}'s photo">` : '<p>No photo available</p>'}
+                    <p><strong>Name:</strong> ${student.name}</p>
+                    <p><strong>User ID:</strong> ${student.userId}</p>
+                    <button onclick="toggleAttendance(this, '${student.userId}')" data-status="${attendanceStatus}">${attendanceStatus}</button>
+                `;
+                attendanceList.appendChild(studentDiv);
+            });
+        }
+    
+       // Function to toggle attendance status and save it to localStorage
+        function toggleAttendance(button, roll_no) {
+            // Get the current status from the button's inner text
+            const currentStatus = button.getAttribute('data-status');
+            
+            // Toggle the status between 'Absent' and 'Present'
+            let newStatus;
+            if (currentStatus === 'Absent') {
+                newStatus = 'Present';
+                button.setAttribute('data-status', 'Present');
+            } else {
+                newStatus = 'Absent';
+                button.setAttribute('data-status', 'Absent');
+            }
+    
+            // Update the button's text to reflect the new status
+            button.innerText = newStatus;
+            button.setAttribute('data-status', newStatus);
+            
+            // Fetch student data from localStorage, update the attendance status, and save it back
+            const studentData = JSON.parse(localStorage.getItem(userId)) || {};
+            studentData.attendanceStatus = newStatus;
+            localStorage.setItem(userId, JSON.stringify(studentData));
+        }
+    
+        // Run the default view when the page loads
+        showTeacherDetails();
+    </script>
+    
+</body>
+</html>

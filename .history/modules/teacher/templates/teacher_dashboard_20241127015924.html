@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teacher Dashboard</title>
+    <style>
+        /* Basic styling */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+        }
+
+        /* Sidebar styling */
+        .sidebar {
+            width: 200px;
+            background-color: #333;
+            color: white;
+            height: 100vh;
+            padding-top: 60px;
+            box-sizing: border-box;
+            position: fixed;
+            left: -200px;
+            transition: left 0.3s;
+            overflow-y: auto;
+        }
+
+        .sidebar.active {
+            left: 0;
+        }
+
+        /* Toggle button styling */
+        .toggle-btn {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background-color: #333;
+            color: white;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            z-index: 1000;
+        }
+
+        /* Sidebar buttons styling */
+        .sidebar button {
+            background-color: #444;
+            color: white;
+            border: none;
+            padding: 10px;
+            width: 100%;
+            text-align: left;
+            margin-bottom: 10px;
+            cursor: pointer;
+        }
+
+        .sidebar button:hover {
+            background-color: #555;
+        }
+
+        /* Content styling */
+        .content {
+            margin-left: 20px;
+            padding: 20px;
+            flex: 1;
+            transition: margin-left 0.3s;
+        }
+
+        .content.expanded {
+            margin-left: 220px;
+        }
+
+        /* Attendance list styling */
+        .student-item {
+            margin-bottom: 20px;
+        }
+
+        .student-item img {
+            width: 100px;
+            height: 100px;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .student-item p {
+            margin: 0;
+        }
+
+        .student-item button {
+            margin-top: 5px;
+        }
+
+        .session-status {
+            margin: 20px 0;
+            font-size: 18px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <!-- Toggle button for the sidebar -->
+    <button class="toggle-btn" onclick="toggleSidebar()">☰</button>
+
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+        <button onclick="showTeacherDetails()">Teacher Details</button>
+        <button onclick="showAttendance()">Attendance</button>
+
+    </div>
+
+    <!-- Main content -->
+    <div class="content" id="content"></div>
+
+    <script>
+        // Toggle sidebar
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const content = document.getElementById('content');
+            sidebar.classList.toggle('active');
+            content.classList.toggle('expanded');
+        }
+
+        // Function to load teacher details from MySQL
+        function showTeacherDetails() {
+            document.getElementById("content").innerHTML = `
+                <div class="content" id="content">
+                    <h1>Welcome, {{ teacher.name }}</h1>
+                    <p><strong>Email:</strong> {{ teacher.email }}</p>
+                    <p><strong>Course:</strong> {{ teacher.course }}</p>
+                    {% if teacher.photo %}
+                    <img src="{{ url_for('static', filename='uploads/' + teacher.photo) }}" alt="Profile Photo" style="width: 150px; height: 150px;">
+                    {% endif %}
+                </div>
+            `;
+        }
+
+        // Show attendance form
+       async function showAttendance() {
+            const response = await fetch('/teacher/active_session');
+            const data = await response.json();
+
+            if (data.active_session) {
+                // Show active session
+                const session = data.active_session;
+                document.getElementById("content").innerHTML = `
+                    <h2>Take Attendance</h2>
+                    <p>Active Session ID: ${session.session_id}</p>
+                    <p>Batch ID: ${session.batch_id}</p>
+                    <p>Course Code: ${session.course_code}</p>
+                    <p>Start Time: ${new Date(session.start_time).toLocaleString()}</p>
+                    <p>End Time: ${new Date(session.end_time).toLocaleString()}</p>
+                    <button onclick="endSession('${session.session_id}')">End Session</button>                  
+                    <button onclick="viewAttendance('${session.batch_id}', '${session.course_code}')">View Attendance</button>  <!-- View Attendance Button -->
+
+                    `;              
+            } else {
+                // Show start session form
+                document.getElementById("content").innerHTML = `
+                    <div class="session-status">
+                        <h2>No active session. Please start a session first.</h2>
+                        <label for="batch">Enter Batch Number:</label>
+                        <input type="text" id="batch" required>
+                    <div>
+                    <label for="course">Enter Course Code:</label>
+                    <input type="text" id="course" placeholder="Course Code">
+                    </div>
+                    <button onclick="startSession()">Start New Session</button>
+                    </div>
+                `;
+            }
+        }    
+
+        // Display session status on the page
+        function displaySessionStatus(activeSession) {
+            if (activeSession) {
+                document.getElementById("content").innerHTML += `
+                    <div class="session-status">
+                        Active Session: ${activeSession.session_id} (Started at: ${activeSession.start_time})
+                        <button onclick="endSession('${activeSession.session_id}')">End Session</button>
+                    </div>
+                `;
+            } else {
+                document.getElementById("content").innerHTML += `
+                    <div class="session-status">
+                        No active session.
+                        <button onclick="startSession()">Start New Session</button>
+                    </div>
+                `;
+            }
+        }
+
+        async function startSession() {
+            const batchId = document.getElementById('batch').value;
+            const course = document.getElementById('course').value;
+
+            if (!batch || !course) {
+                alert('Please provide both batch and course code.');
+                return;
+            }
+        
+            try {
+                const response = await fetch('/teacher/start_session', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ batch_id: batchId ,course_code:course}),
+                });
+        
+                const result = await response.json();
+              
+                console.log("Response Status:", response.status); // Log response status
+                console.log("Response Body:", result);           // Log response body
+
+
+                if (response.ok) {
+                    alert(result.message);
+                    // Update the UI to reflect the active session
+                    showAttendance(); // Redirect to the active session page
+                } else {
+                    alert(result.error);
+                }
+            } catch (error) {
+                alert('Error starting session. Please try again.');
+            }
+        }
+        
+        function viewAttendance(batch_id, course_code) {
+            // Send batch_id and course_code to the server to fetch the attendance data
+            window.location.href = `/teacher/view_attendance?batch_id=${batch_id}&course_code=${course_code}`;
+        }
+
+        async function endSession(sessionId) {
+            try {
+                const response = await fetch('/teacher/end_session', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ session_id: sessionId }),
+                });
+        
+                const result = await response.json();
+        
+                if (response.ok) {
+                    alert(result.message);
+                    // Update the UI after ending the session
+                    showAttendance();
+                } else {
+                    alert(result.error);
+                }
+            } catch (error) {
+                alert('Error ending session. Please try again.');
+            }
+        }
+
+    // Fetch and display the active session data on page load
+    showTeacherDetails();
+    </script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Developer Dashboard</title>
+</head>
+<body>
+    <h1>Welcome, {{ current_user.email }}!</h1>
+    <p>This is your Developer Dashboard.</p>
+    <p><a href="{{ url_for('developer.register_student') }}">Register Student</a></p>
+    <p><a href="{{ url_for('developer.register_teacher') }}">Register Teacher</a></p>
+    <p><a href="{{ url_for('logout') }}">Logout</a></p>
+</body>
+</html>
