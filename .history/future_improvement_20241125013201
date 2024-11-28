@@ -1,3 +1,0 @@
-Further Improvements:
-Dynamic Batch List: Depending on the course selected, you can dynamically fetch the batches associated with that course.
-Session Duration: The end_time can be adjusted based on the actual session time, and you can consider setting a default duration or allowing the teacher to specify it.
