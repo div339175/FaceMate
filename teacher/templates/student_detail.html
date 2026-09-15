@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Details - {{ student.name }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style> body { font-family: 'Inter', sans-serif; } </style>
+    <script>
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        function toggleAttendance(recordId, button) {
+            const csrftoken = getCookie('csrftoken') || document.querySelector('[name=csrfmiddlewaretoken]')?.value;
+            
+            fetch(`/teacher/attendance/toggle/${recordId}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrftoken,
+                    'Content-Type': 'application/json',
+                },
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('Error: ' + (data.error || 'Failed to update attendance'));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Failed to update attendance status');
+            });
+        }
+    </script>
+</head>
+<body class="bg-gray-100">
+    <div style="display:none;">{% csrf_token %}</div>
+    <div class="container mx-auto p-8">
+        <div class="flex justify-between items-center mb-8">
+            <h1 class="text-3xl font-bold text-gray-800">Student Details</h1>
+            <a href="{% url 'view_students' %}" class="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition duration-300">Back to Students</a>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Student Profile Card -->
+            <div class="lg:col-span-1">
+                <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+                    <div class="h-32 bg-gradient-to-r from-indigo-500 to-purple-600"></div>
+                    <div class="px-6 pb-6 -mt-16">
+                        <div class="flex justify-center mb-4">
+                            {% if student.photo %}
+                                <img class="h-32 w-32 rounded-full border-4 border-white object-cover shadow-lg" src="{{ student.photo.url }}" alt="">
+                            {% else %}
+                                <div class="h-32 w-32 rounded-full border-4 border-white bg-indigo-100 flex items-center justify-center shadow-lg">
+                                    <span class="text-4xl font-bold text-indigo-600">{{ student.name|slice:":1" }}</span>
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="text-center mb-6">
+                            <h2 class="text-2xl font-bold text-gray-800 mb-2">{{ student.name }}</h2>
+                            <p class="text-gray-600 mb-1">{{ student.email }}</p>
+                            <p class="text-sm text-gray-500">{{ student.phone|default:"No phone provided" }}</p>
+                        </div>
+                        
+                        <div class="space-y-3 border-t pt-4">
+                            <div class="flex justify-between">
+                                <span class="text-sm text-gray-600">Roll Number:</span>
+                                <span class="text-sm font-semibold text-gray-800">{{ student.roll_number }}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-sm text-gray-600">Enrollment No:</span>
+                                <span class="text-sm font-semibold text-gray-800">{{ student.enrollment_number }}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-sm text-gray-600">Class:</span>
+                                <span class="text-sm font-semibold text-gray-800">{{ student.class_name }}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-sm text-gray-600">Section:</span>
+                                <span class="text-sm font-semibold text-gray-800">{{ student.section }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Attendance Statistics Card -->
+                <div class="bg-white rounded-xl shadow-lg p-6 mt-6">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">Attendance Stats</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <div class="flex justify-between text-sm mb-1">
+                                <span class="text-gray-600">Overall Attendance</span>
+                                <span class="font-semibold text-gray-800">{{ attendance_percentage }}%</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-3">
+                                <div class="h-3 rounded-full {% if attendance_percentage >= 75 %}bg-green-500{% elif attendance_percentage >= 60 %}bg-yellow-500{% else %}bg-red-500{% endif %}" style="width: {{ attendance_percentage }}%"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="grid grid-cols-3 gap-3 pt-2">
+                            <div class="text-center p-3 bg-gray-50 rounded-lg">
+                                <p class="text-2xl font-bold text-gray-800">{{ total_days }}</p>
+                                <p class="text-xs text-gray-600">Total Days</p>
+                            </div>
+                            <div class="text-center p-3 bg-green-50 rounded-lg">
+                                <p class="text-2xl font-bold text-green-600">{{ present_days }}</p>
+                                <p class="text-xs text-gray-600">Present</p>
+                            </div>
+                            <div class="text-center p-3 bg-red-50 rounded-lg">
+                                <p class="text-2xl font-bold text-red-600">{{ absent_days }}</p>
+                                <p class="text-xs text-gray-600">Absent</p>
+                            </div>
+                        </div>
+
+                        {% if attendance_percentage >= 75 %}
+                            <div class="p-3 bg-green-50 border-l-4 border-green-500 rounded">
+                                <p class="text-sm font-medium text-green-800">Good Attendance</p>
+                                <p class="text-xs text-green-600">Keep up the good work!</p>
+                            </div>
+                        {% elif attendance_percentage >= 60 %}
+                            <div class="p-3 bg-yellow-50 border-l-4 border-yellow-500 rounded">
+                                <p class="text-sm font-medium text-yellow-800">Average Attendance</p>
+                                <p class="text-xs text-yellow-600">Needs improvement</p>
+                            </div>
+                        {% else %}
+                            <div class="p-3 bg-red-50 border-l-4 border-red-500 rounded">
+                                <p class="text-sm font-medium text-red-800">Poor Attendance</p>
+                                <p class="text-xs text-red-600">Requires attention</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Attendance History -->
+            <div class="lg:col-span-2">
+                <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+                    <div class="px-6 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white">
+                        <h3 class="text-xl font-semibold">Attendance History</h3>
+                        <p class="text-sm text-indigo-100">Recent attendance records</p>
+                    </div>
+                    
+                    {% if attendance_records %}
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Class</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Section</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200">
+                                    {% for record in attendance_records %}
+                                        <tr class="hover:bg-gray-50">
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                                {{ record.session.session_date|date:"M d, Y" }}
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                                                {{ record.session.class_name }}
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                                                {{ record.session.section }}
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap">
+                                                {% if record.is_present %}
+                                                    <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                                        <svg class="mr-1 h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                                                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                                                        </svg>
+                                                        Present
+                                                    </span>
+                                                {% else %}
+                                                    <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                                                        <svg class="mr-1 h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                                                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                                                        </svg>
+                                                        Absent
+                                                    </span>
+                                                {% endif %}
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                                                {{ record.timestamp|date:"h:i A" }}
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                                <button onclick="toggleAttendance({{ record.id }}, this)" 
+                                                        class="px-3 py-1 text-xs font-medium rounded-md transition duration-300 {% if record.is_present %}bg-red-100 text-red-700 hover:bg-red-200{% else %}bg-green-100 text-green-700 hover:bg-green-200{% endif %}">
+                                                    {% if record.is_present %}Mark Absent{% else %}Mark Present{% endif %}
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        {% if attendance_records|length >= 30 %}
+                            <div class="px-6 py-4 bg-gray-50 border-t text-center">
+                                <p class="text-sm text-gray-600">Showing last 30 records</p>
+                            </div>
+                        {% endif %}
+                    {% else %}
+                        <div class="px-6 py-12 text-center">
+                            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            <p class="mt-4 text-lg text-gray-600">No attendance records found</p>
+                            <p class="text-sm text-gray-500">Attendance records will appear here once marked</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

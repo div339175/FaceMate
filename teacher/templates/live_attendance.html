@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Attendance - FaceMate</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .roster-item.present { background-color: #f0fdf4; border-left-color: #22c55e; }
+        .roster-item.absent { background-color: #fef2f2; border-left-color: #ef4444; }
+        .badge-ai { background-color: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
+        .badge-manual { background-color: #dbeafe; color: #1d4ed8; border: 1px solid #bfdbfe; }
+        .badge-absent { background-color: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
+        .badge-verifying { background-color: #fef9c3; color: #854d0e; border: 1px solid #fef08a; }
+    </style>
+</head>
+<body class="bg-slate-100 min-h-screen text-slate-800">
+    <div class="container mx-auto p-4 sm:p-6 lg:p-8 max-w-7xl">
+        <!-- Top Navigation Header -->
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 pb-4 border-b border-slate-200">
+            <div>
+                <div class="flex items-center gap-2">
+                    <span class="px-2.5 py-1 text-xs font-bold rounded-full bg-indigo-100 text-indigo-700 tracking-wide uppercase">Live Session</span>
+                    <h1 class="text-2xl sm:text-3xl font-bold text-slate-800">Class {{ class_name }} — Section {{ section }}</h1>
+                </div>
+                <p class="text-sm text-slate-500 mt-1">AI-assisted real-time facial verification & manual attendance review</p>
+            </div>
+            <div class="flex items-center gap-2">
+                <a href="{% url 'select_attendance_class' %}" id="changeClassBtn" class="px-4 py-2 bg-slate-200 text-slate-700 font-medium rounded-lg hover:bg-slate-300 transition flex items-center gap-1.5 text-sm">
+                    <span>←</span> Change Class
+                </a>
+                <a href="{% url 'teacher_dashboard' %}" id="dashboardNavBtn" class="px-4 py-2 bg-white border border-slate-300 text-slate-700 font-medium rounded-lg hover:bg-slate-50 transition text-sm">
+                    Dashboard
+                </a>
+            </div>
+        </div>
+
+        <!-- Metric Summary Cards -->
+        <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 sm:gap-4 mb-6">
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+                <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Enrolled</p>
+                <p id="totalCount" class="text-2xl font-bold text-slate-800 mt-1">{{ students|length }}</p>
+            </div>
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+                <p class="text-xs font-semibold text-green-600 uppercase tracking-wider">AI Verified</p>
+                <p id="aiCount" class="text-2xl font-bold text-green-600 mt-1">0</p>
+            </div>
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+                <p class="text-xs font-semibold text-blue-600 uppercase tracking-wider">Manual Present</p>
+                <p id="manualCount" class="text-2xl font-bold text-blue-600 mt-1">0</p>
+            </div>
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+                <p class="text-xs font-semibold text-slate-700 uppercase tracking-wider">Total Present</p>
+                <p id="presentCount" class="text-2xl font-bold text-slate-900 mt-1">0</p>
+            </div>
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 col-span-2 sm:col-span-1">
+                <p class="text-xs font-semibold text-red-600 uppercase tracking-wider">Absent</p>
+                <p id="absentCount" class="text-2xl font-bold text-red-600 mt-1">{{ students|length }}</p>
+            </div>
+        </div>
+        
+        <!-- Main Content Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <!-- Left: Video & Camera Feed -->
+            <div class="lg:col-span-7 flex flex-col gap-4">
+                <div class="bg-slate-900 rounded-2xl shadow-md overflow-hidden relative min-h-[380px] sm:min-h-[460px] flex items-center justify-center border border-slate-800">
+                    <video id="video" class="w-full h-full object-cover" autoplay playsinline></video>
+                    <canvas id="canvas" class="hidden"></canvas>
+
+                    <!-- Loading / Status Overlay -->
+                    <div id="cameraStatusOverlay" class="absolute inset-0 bg-slate-900/80 flex flex-col items-center justify-center p-6 text-center text-white z-10 transition-opacity duration-300">
+                        <div id="cameraSpinner" class="animate-spin rounded-full h-12 w-12 border-4 border-indigo-500 border-t-transparent mb-3"></div>
+                        <p id="cameraStatusText" class="text-base font-semibold">Initializing camera stream...</p>
+                        <p id="cameraStatusSub" class="text-xs text-slate-400 mt-1">Please allow camera permissions if prompted by your browser</p>
+                        <button id="retryCameraBtn" class="hidden mt-4 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition">
+                            Retry Camera
+                        </button>
+                    </div>
+
+                    <!-- Live Scanning Indicator -->
+                    <div id="scanningPill" class="hidden absolute top-4 left-4 z-20 flex items-center gap-2 bg-slate-950/75 backdrop-blur-md px-3 py-1.5 rounded-full border border-slate-700/60 text-xs text-white">
+                        <span class="w-2.5 h-2.5 rounded-full bg-green-500 animate-ping"></span>
+                        <span class="w-2.5 h-2.5 rounded-full bg-green-500 absolute"></span>
+                        <span class="font-medium">AI Scanner Active</span>
+                    </div>
+
+                    <!-- Camera Control Controls -->
+                    <div class="absolute top-4 right-4 z-20 flex items-center gap-2">
+                        <button id="switchCameraBtn" type="button" class="bg-slate-950/75 hover:bg-slate-900 backdrop-blur-md text-white font-medium py-1.5 px-3 rounded-lg border border-slate-700/60 shadow-md transition text-xs flex items-center gap-1.5">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                            <span id="cameraLabel">Flip Camera</span>
+                        </button>
+                        <button id="toggleCameraFeedBtn" type="button" class="bg-slate-950/75 hover:bg-slate-900 backdrop-blur-md text-white font-medium py-1.5 px-3 rounded-lg border border-slate-700/60 shadow-md transition text-xs">
+                            Pause AI
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Recognition Status Bar -->
+                <div class="bg-white rounded-xl p-3.5 border border-slate-200 shadow-sm flex items-center justify-between text-xs sm:text-sm">
+                    <div class="flex items-center gap-2 text-slate-600">
+                        <span class="font-medium text-slate-800">Status:</span>
+                        <span id="liveStatusMessage" class="text-slate-500">Camera ready. Scanning faces...</span>
+                    </div>
+                    <div class="text-slate-400 text-xs font-mono">
+                        Verification threshold: 3 frames
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: Class Roster & Manual Overrides -->
+            <div class="lg:col-span-5 flex flex-col bg-white rounded-2xl shadow-sm border border-slate-200 p-5 sm:p-6">
+                <div class="flex justify-between items-center mb-3">
+                    <h2 class="text-lg font-bold text-slate-900">Class Roster</h2>
+                    <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-100 text-slate-700">
+                        {{ students|length }} Students
+                    </span>
+                </div>
+
+                <!-- Search Filter Input -->
+                <div class="relative mb-4">
+                    <input type="text" id="rosterSearch" placeholder="Search by student name or roll..." class="w-full px-3.5 py-2 pl-9 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 absolute left-3 top-3 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                </div>
+
+                <!-- Student List Scroll Area -->
+                <div id="roster" class="space-y-2.5 flex-1 max-h-[420px] overflow-y-auto pr-1">
+                    {% for student in students %}
+                    <div id="student-{{ student.enrollment_number }}" 
+                         data-enrollment="{{ student.enrollment_number }}"
+                         data-name="{{ student.name|lower }}"
+                         data-roll="{{ student.roll_number|lower }}"
+                         class="roster-item absent p-3 border-l-4 rounded-xl flex justify-between items-center transition-all duration-200 shadow-sm border border-slate-200/80 hover:border-slate-300">
+                        <div class="min-w-0 pr-2">
+                            <div class="flex items-center gap-1.5 flex-wrap">
+                                <p class="font-semibold text-slate-800 text-sm truncate">{{ student.name }}</p>
+                                <span class="status-badge badge-absent text-[10px] font-bold px-2 py-0.5 rounded-full">Absent</span>
+                            </div>
+                            <p class="text-xs text-slate-500 mt-0.5">Roll: {{ student.roll_number }} • Enr: {{ student.enrollment_number }}</p>
+                        </div>
+                        <button type="button" 
+                                class="toggle-status-btn flex-shrink-0 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors duration-150 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300"
+                                data-enrollment="{{ student.enrollment_number }}">
+                            Mark Present
+                        </button>
+                    </div>
+                    {% empty %}
+                    <div class="text-center py-12 text-slate-400">
+                        <p class="text-base font-semibold">No students enrolled</p>
+                        <p class="text-xs mt-1">There are no students enrolled in Class {{ class_name }} - {{ section }}.</p>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <!-- Attendance Finalization Form -->
+                <form id="attendanceForm" method="POST" action="{% url 'save_attendance' %}" class="mt-4 pt-4 border-t border-slate-100">
+                    {% csrf_token %}
+                    <input type="hidden" name="class_name" value="{{ class_name }}">
+                    <input type="hidden" name="section" value="{{ section }}">
+                    <input type="hidden" name="format" id="formatInput" value="json">
+                    <div id="hidden-inputs"></div>
+
+
+                    <!-- Notes Input (Optional) -->
+                    <div class="mb-3">
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Session Notes (Optional)</label>
+                        <input type="text" name="notes" placeholder="e.g. Period 1, Regular lecture" class="w-full px-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                    </div>
+
+                    <button type="button" id="finalizeBtn" class="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl shadow-md transition duration-150 flex items-center justify-center gap-2 text-sm">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                        <span>Finalize & Save Attendance</span>
+                    </button>
+                </form>
+
+                <!-- Feedback & Messages -->
+                <div id="saveMessage" class="hidden mt-3 p-3 text-xs rounded-xl text-center font-medium"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success Modal -->
+    <div id="successModal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 text-center transform transition-all">
+            <div class="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-9 w-9" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                </svg>
+            </div>
+            <h3 class="text-xl font-bold text-slate-900 mb-1">Attendance Finalized!</h3>
+            <p id="modalSummary" class="text-sm text-slate-600 mb-6">Attendance records have been committed to the database.</p>
+
+            <div class="grid grid-cols-2 gap-3 mb-6 bg-slate-50 p-4 rounded-xl border border-slate-100 text-sm">
+                <div>
+                    <span class="text-xs text-slate-500 block">Class</span>
+                    <span class="font-bold text-slate-800">{{ class_name }} - {{ section }}</span>
+                </div>
+                <div>
+                    <span class="text-xs text-slate-500 block">Total Present</span>
+                    <span id="modalPresentCount" class="font-bold text-emerald-600">0</span>
+                </div>
+            </div>
+
+            <div class="flex flex-col gap-2.5">
+                <a id="modalDetailBtn" href="#" class="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl text-sm transition shadow-sm">
+                    📋 View Attendance Details & PDF
+                </a>
+                <a id="modalExportBtn" href="#" class="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl text-sm transition shadow-sm">
+                    ⬇️ Download CSV Report
+                </a>
+                <div class="grid grid-cols-2 gap-2 pt-1">
+                    <a href="{% url 'select_attendance_class' %}" class="py-2 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-xl text-xs transition">
+                        Take Another Class
+                    </a>
+                    <a href="{% url 'teacher_dashboard' %}" class="py-2 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-xl text-xs transition">
+                        Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const cameraStatusOverlay = document.getElementById('cameraStatusOverlay');
+        const cameraSpinner = document.getElementById('cameraSpinner');
+        const cameraStatusText = document.getElementById('cameraStatusText');
+        const cameraStatusSub = document.getElementById('cameraStatusSub');
+        const retryCameraBtn = document.getElementById('retryCameraBtn');
+        const scanningPill = document.getElementById('scanningPill');
+        const liveStatusMessage = document.getElementById('liveStatusMessage');
+        const switchCameraBtn = document.getElementById('switchCameraBtn');
+        const cameraLabel = document.getElementById('cameraLabel');
+        const toggleCameraFeedBtn = document.getElementById('toggleCameraFeedBtn');
+        
+        const roster = document.getElementById('roster');
+        const rosterSearch = document.getElementById('rosterSearch');
+        const totalCountEl = document.getElementById('totalCount');
+        const aiCountEl = document.getElementById('aiCount');
+        const manualCountEl = document.getElementById('manualCount');
+        const presentCountEl = document.getElementById('presentCount');
+        const absentCountEl = document.getElementById('absentCount');
+        
+        const attendanceForm = document.getElementById('attendanceForm');
+        const finalizeBtn = document.getElementById('finalizeBtn');
+        const saveMessage = document.getElementById('saveMessage');
+        const hiddenInputsContainer = document.getElementById('hidden-inputs');
+        const csrfToken = attendanceForm.querySelector('[name=csrfmiddlewaretoken]').value;
+        
+        const successModal = document.getElementById('successModal');
+        const modalSummary = document.getElementById('modalSummary');
+        const modalPresentCount = document.getElementById('modalPresentCount');
+        const modalDetailBtn = document.getElementById('modalDetailBtn');
+        const modalExportBtn = document.getElementById('modalExportBtn');
+
+        // State variables
+        let currentFacingMode = 'user'; // 'user' (front) or 'environment' (back)
+        let currentStream = null;
+        let recognitionInterval = null;
+        let isLive = true;
+        let isProcessingFrame = false; // Mutex to prevent request piling
+        let activeFrameController = null; // AbortController for in-flight recognition HTTP requests
+        const recognitionCounters = {}; // Tracks frame hits per student
+        const studentSources = {}; // 'ai' or 'manual'
+
+        // ==================== CLEANUP & TEARDOWN ====================
+        function cleanupCamera() {
+            isLive = false;
+            if (recognitionInterval) {
+                clearInterval(recognitionInterval);
+                recognitionInterval = null;
+            }
+            if (currentStream) {
+                currentStream.getTracks().forEach(track => {
+                    try { track.stop(); } catch(e) {}
+                });
+                currentStream = null;
+            }
+            if (video) {
+                try { video.pause(); } catch(e) {}
+                video.srcObject = null;
+            }
+        }
+
+        function navigateSafely(url) {
+            cleanupCamera();
+            window.location.href = url;
+        }
+
+
+        // Teardown camera on navigation, page hide, or popstate
+        window.addEventListener('beforeunload', cleanupCamera);
+        window.addEventListener('pagehide', cleanupCamera);
+        window.addEventListener('popstate', cleanupCamera);
+
+        const changeClassBtn = document.getElementById('changeClassBtn');
+        if (changeClassBtn) {
+            changeClassBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                navigateSafely(changeClassBtn.href);
+            });
+        }
+
+        const dashboardNavBtn = document.getElementById('dashboardNavBtn');
+        if (dashboardNavBtn) {
+            dashboardNavBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                navigateSafely(dashboardNavBtn.href);
+            });
+        }
+
+        // ==================== CAMERA INITIALIZATION ====================
+        async function setupCamera(facingMode = 'user') {
+            try {
+                // Teardown existing stream before starting a new one
+                if (currentStream) {
+                    currentStream.getTracks().forEach(t => t.stop());
+                    currentStream = null;
+                }
+                if (recognitionInterval) {
+                    clearInterval(recognitionInterval);
+                    recognitionInterval = null;
+                }
+
+                cameraStatusOverlay.classList.remove('hidden', 'opacity-0');
+                cameraSpinner.classList.remove('hidden');
+                cameraStatusText.textContent = "Starting camera...";
+                cameraStatusSub.textContent = "Please allow camera access if prompted.";
+                retryCameraBtn.classList.add('hidden');
+
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    throw new Error("Camera API is not supported or requires HTTPS/localhost.");
+                }
+
+                const constraints = {
+                    video: {
+                        facingMode: { ideal: facingMode },
+                        width: { ideal: 640 },
+                        height: { ideal: 480 }
+                    },
+                    audio: false
+                };
+
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                currentStream = stream;
+                video.srcObject = stream;
+                await video.play();
+
+                // Camera started successfully
+                cameraStatusOverlay.classList.add('hidden');
+                scanningPill.classList.remove('hidden');
+                cameraLabel.textContent = facingMode === 'user' ? 'Front Camera' : 'Back Camera';
+                isLive = true;
+                liveStatusMessage.textContent = "Camera active. Scanning faces in class...";
+
+                // Start periodic recognition loop with interval (1200ms)
+                recognitionInterval = setInterval(sendFrameForRecognition, 1200);
+            } catch (err) {
+                console.error("Camera Setup Error:", err);
+                cameraSpinner.classList.add('hidden');
+                retryCameraBtn.classList.remove('hidden');
+                scanningPill.classList.add('hidden');
+                cameraStatusText.textContent = "Camera unavailable";
+                cameraStatusSub.textContent = err.message || "Could not access camera. You can still take attendance manually using the roster.";
+                liveStatusMessage.textContent = "Manual attendance mode (camera unavailable).";
+            }
+        }
+
+        retryCameraBtn.addEventListener('click', () => {
+            setupCamera(currentFacingMode);
+        });
+
+        switchCameraBtn.addEventListener('click', () => {
+            currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
+            setupCamera(currentFacingMode);
+        });
+
+        toggleCameraFeedBtn.addEventListener('click', () => {
+            isLive = !isLive;
+            if (isLive) {
+                toggleCameraFeedBtn.textContent = 'Pause AI';
+                scanningPill.classList.remove('hidden');
+                liveStatusMessage.textContent = "AI scanning resumed.";
+                if (!recognitionInterval) {
+                    recognitionInterval = setInterval(sendFrameForRecognition, 1200);
+                }
+            } else {
+                toggleCameraFeedBtn.textContent = 'Resume AI';
+                scanningPill.classList.add('hidden');
+                liveStatusMessage.textContent = "AI scanning paused. Manual mode active.";
+                if (recognitionInterval) {
+                    clearInterval(recognitionInterval);
+                    recognitionInterval = null;
+                }
+            }
+        });
+
+        // ==================== RECOGNITION PIPELINE ====================
+        async function sendFrameForRecognition() {
+            if (!isLive || isProcessingFrame || video.readyState < 2 || video.videoWidth === 0) {
+                return;
+            }
+
+            isProcessingFrame = true; // Lock mutex
+
+            try {
+                const context = canvas.getContext('2d');
+                const maxWidth = 480;
+                const scale = Math.min(1, maxWidth / video.videoWidth);
+                canvas.width = Math.round(video.videoWidth * scale);
+                canvas.height = Math.round(video.videoHeight * scale);
+                context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                const imageData = canvas.toDataURL('image/jpeg', 0.7);
+
+                const formData = new FormData();
+                formData.append('image_data', imageData);
+                formData.append('class_name', '{{ class_name }}');
+                formData.append('section', '{{ section }}');
+
+                if (activeFrameController) {
+                    try { activeFrameController.abort(); } catch(e) {}
+                }
+                activeFrameController = new AbortController();
+                const timeoutId = setTimeout(() => {
+                    if (activeFrameController) {
+                        try { activeFrameController.abort(); } catch(e) {}
+                    }
+                }, 3500);
+
+                const response = await fetch("{% url 'recognize_frame' %}", {
+                    method: 'POST',
+                    body: formData,
+                    headers: { 
+                        'X-CSRFToken': csrfToken,
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    signal: activeFrameController.signal
+                });
+
+                clearTimeout(timeoutId);
+
+                if (!response.ok) {
+                    return;
+                }
+
+                const data = await response.json();
+                if (data.recognized_ids && data.recognized_ids.recognized) {
+                    data.recognized_ids.recognized.forEach(id => {
+                        handleStudentRecognitionHit(id);
+                    });
+                }
+            } catch (err) {
+                if (err.name !== 'AbortError') {
+                    console.warn("Recognition frame warning:", err.message);
+                }
+            } finally {
+                isProcessingFrame = false; // Release mutex
+            }
+        }
+
+        function handleStudentRecognitionHit(enrollmentNumber) {
+            const studentDiv = document.getElementById(`student-${enrollmentNumber}`);
+            if (!studentDiv) return;
+
+            // If teacher manually changed this student, respect teacher's choice
+            if (studentSources[enrollmentNumber] === 'manual') return;
+
+            recognitionCounters[enrollmentNumber] = (recognitionCounters[enrollmentNumber] || 0) + 1;
+            const count = recognitionCounters[enrollmentNumber];
+
+            const badge = studentDiv.querySelector('.status-badge');
+
+            if (count < 3) {
+                if (!studentDiv.classList.contains('present')) {
+                    badge.className = 'status-badge badge-verifying text-[10px] font-bold px-2 py-0.5 rounded-full';
+                    badge.textContent = `Verifying (${count}/3)`;
+                }
+            } else {
+                // 3-Frame verification satisfied!
+                markStudent(enrollmentNumber, 'Present', 'ai');
+                liveStatusMessage.textContent = `✓ Recognized & verified student ${enrollmentNumber}`;
+            }
+        }
+
+        // ==================== ROSTER & STATUS MANAGEMENT ====================
+        function markStudent(enrollmentNumber, status, source = 'manual') {
+            const studentDiv = document.getElementById(`student-${enrollmentNumber}`);
+            if (!studentDiv) return;
+
+            const statusBtn = studentDiv.querySelector('.toggle-status-btn');
+            const badge = studentDiv.querySelector('.status-badge');
+
+            studentSources[enrollmentNumber] = source;
+
+            if (status === 'Present') {
+                studentDiv.classList.remove('absent');
+                studentDiv.classList.add('present');
+                statusBtn.textContent = 'Mark Absent';
+                statusBtn.className = 'toggle-status-btn flex-shrink-0 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors duration-150 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 border border-emerald-300';
+                
+                if (source === 'ai') {
+                    badge.className = 'status-badge badge-ai text-[10px] font-bold px-2 py-0.5 rounded-full';
+                    badge.textContent = 'AI Verified';
+                } else {
+                    badge.className = 'status-badge badge-manual text-[10px] font-bold px-2 py-0.5 rounded-full';
+                    badge.textContent = 'Manual Present';
+                }
+            } else {
+                studentDiv.classList.remove('present');
+                studentDiv.classList.add('absent');
+                statusBtn.textContent = 'Mark Present';
+                statusBtn.className = 'toggle-status-btn flex-shrink-0 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors duration-150 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300';
+                
+                badge.className = 'status-badge badge-absent text-[10px] font-bold px-2 py-0.5 rounded-full';
+                badge.textContent = 'Absent';
+                recognitionCounters[enrollmentNumber] = 0; // reset hit counter
+            }
+
+            updateMetrics();
+        }
+
+        function updateMetrics() {
+            const allStudents = roster.querySelectorAll('.roster-item');
+            let aiCount = 0;
+            let manualCount = 0;
+            let presentCount = 0;
+            let absentCount = 0;
+
+            allStudents.forEach(item => {
+                const enr = item.dataset.enrollment;
+                const isPresent = item.classList.contains('present');
+                if (isPresent) {
+                    presentCount++;
+                    if (studentSources[enr] === 'ai') {
+                        aiCount++;
+                    } else {
+                        manualCount++;
+                    }
+                } else {
+                    absentCount++;
+                }
+            });
+
+            aiCountEl.textContent = aiCount;
+            manualCountEl.textContent = manualCount;
+            presentCountEl.textContent = presentCount;
+            absentCountEl.textContent = absentCount;
+        }
+
+        // Toggle status on manual button click
+        roster.addEventListener('click', (e) => {
+            const btn = e.target.closest('.toggle-status-btn');
+            if (btn) {
+                const enrollmentNumber = btn.dataset.enrollment;
+                const studentDiv = document.getElementById(`student-${enrollmentNumber}`);
+                const isCurrentlyPresent = studentDiv.classList.contains('present');
+                markStudent(enrollmentNumber, isCurrentlyPresent ? 'Absent' : 'Present', 'manual');
+            }
+        });
+
+        // Search Filter in Roster
+        rosterSearch.addEventListener('input', (e) => {
+            const q = e.target.value.toLowerCase().trim();
+            const items = roster.querySelectorAll('.roster-item');
+            items.forEach(item => {
+                const name = item.dataset.name || '';
+                const roll = item.dataset.roll || '';
+                const enr = (item.dataset.enrollment || '').toLowerCase();
+                if (name.includes(q) || roll.includes(q) || enr.includes(q)) {
+                    item.classList.remove('hidden');
+                } else {
+                    item.classList.add('hidden');
+                }
+            });
+        });
+
+        // ==================== FINALIZE & SAVE ====================
+        finalizeBtn.addEventListener('click', async () => {
+            // Immediately stop camera tracks and intervals to free threads
+            cleanupCamera();
+
+            hiddenInputsContainer.innerHTML = '';
+            const allStudents = roster.querySelectorAll('.roster-item');
+            allStudents.forEach(studentDiv => {
+                const enr = studentDiv.dataset.enrollment;
+                const isPresent = studentDiv.classList.contains('present');
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = `student_${enr}`;
+                input.value = isPresent ? 'Present' : 'Absent';
+                hiddenInputsContainer.appendChild(input);
+            });
+
+            finalizeBtn.disabled = true;
+            finalizeBtn.innerHTML = `
+                <span class="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></span>
+                <span>Saving Attendance...</span>
+            `;
+            finalizeBtn.classList.add('opacity-80');
+            saveMessage.classList.add('hidden');
+
+            try {
+                const formData = new FormData(attendanceForm);
+                formData.set('format', 'json');
+                const response = await fetch(attendanceForm.action, {
+                    method: 'POST',
+                    body: formData,
+                    headers: { 
+                        'X-CSRFToken': csrfToken,
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+
+                let result;
+                try {
+                    result = await response.json();
+                } catch (jsonErr) {
+                    const rawText = await response.text();
+                    throw new Error(`Server response error (${response.status}): ${rawText.slice(0, 100)}`);
+                }
+
+                if (response.ok && result.success) {
+                    // Populate & Show Success Modal
+                    modalSummary.textContent = result.message;
+                    modalPresentCount.textContent = `${result.present_count} / ${result.total_count}`;
+                    modalDetailBtn.href = result.detail_url;
+                    modalExportBtn.href = result.export_url;
+                    successModal.classList.remove('hidden');
+
+                    // Auto-redirect to details page after 3 seconds
+                    setTimeout(() => {
+                        window.location.href = result.redirect_url;
+                    }, 3000);
+                } else {
+                    throw new Error(result.message || `Error ${response.status}: Failed to save attendance`);
+                }
+            } catch (err) {
+                console.warn("AJAX save error, automatically submitting via native form:", err);
+                // Safe fallback: submit form natively so attendance is never lost
+                const formatInput = document.getElementById('formatInput');
+                if (formatInput) formatInput.value = 'html';
+                attendanceForm.submit();
+            }
+        });
+
+        // Initialize camera on page load
+        setupCamera();
+        updateMetrics();
+    </script>
+</body>
+</html>

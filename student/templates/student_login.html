@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Login - FaceMate</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+    </style>
+</head>
+<body>
+    <div class="min-h-screen flex items-center justify-center px-4">
+        <div class="max-w-md w-full">
+            <!-- Header -->
+            <div class="text-center mb-8">
+                <div class="text-6xl mb-4">👨‍🎓</div>
+                <h1 class="text-4xl font-bold text-white mb-2">Student Login</h1>
+                <p class="text-white opacity-75">Access your attendance dashboard</p>
+            </div>
+
+            <!-- Login Card -->
+            <div class="bg-white rounded-2xl shadow-2xl p-8">
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="mb-4 p-4 rounded-lg {% if message.tags == 'error' %}bg-red-100 text-red-700{% else %}bg-green-100 text-green-700{% endif %}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+
+                <form method="POST" action="{% url 'student_login' %}">
+                    {% csrf_token %}
+                    
+                    <div class="mb-6">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="email">
+                            Email Address
+                        </label>
+                        <input type="email" name="email" id="email" required
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="your.email@student.facemate.com">
+                    </div>
+
+                    <div class="mb-6">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="password">
+                            Password
+                        </label>
+                        <input type="password" name="password" id="password" required
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="Enter your password">
+                    </div>
+
+                    <button type="submit"
+                        class="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold py-3 px-4 rounded-lg transition duration-300 shadow-lg">
+                        Login
+                    </button>
+                </form>
+
+                {% if demo_login_enabled %}
+                <form method="POST" action="{% url 'student_demo_login' %}" class="mt-3">
+                    {% csrf_token %}
+                    <button type="submit" class="w-full border border-blue-300 text-blue-700 font-semibold py-2.5 px-4 rounded-lg hover:bg-blue-50 transition duration-300">
+                        Try the student demo
+                    </button>
+                </form>
+                {% endif %}
+
+                <div class="mt-6 text-center">
+                    <a href="{% url 'home_page' %}" class="text-blue-600 hover:text-blue-800 text-sm">
+                        ← Back to Home
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

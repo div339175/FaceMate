@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% if is_edit %}Edit Student{% else %}Add Student{% endif %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style> body { font-family: 'Inter', sans-serif; } </style>
+</head>
+<body class="bg-gray-100">
+    <div class="container mx-auto p-4 sm:p-6 lg:p-8 max-w-4xl">
+        <div class="bg-white rounded-2xl shadow-lg p-8">
+            <div class="flex justify-between items-center mb-6">
+                <h1 class="text-3xl font-bold text-gray-800">{% if is_edit %}Edit {{ student.name }}{% else %}Add New Student{% endif %}</h1>
+                <a href="{% url 'view_students' %}" class="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600">Back</a>
+            </div>
+            
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="mb-6 p-4 rounded-lg {% if message.tags == 'error' %}bg-red-100 text-red-700{% else %}bg-green-100 text-green-700{% endif %}" role="alert">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+            <form id="studentForm" method="POST" enctype="multipart/form-data">
+                {% csrf_token %}
+                
+                <!-- Student Details -->
+                <div class="mb-8">
+                    <h2 class="text-xl font-semibold text-gray-700 border-b pb-2 mb-6">Student Information</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-600 mb-1">Full Name *</label>
+                            <input type="text" name="name" required value="{{ student.name|default:'' }}" placeholder="e.g., Aarav Verma" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-600 mb-1">Email Address *</label>
+                            <input type="email" name="email" required value="{{ student.email|default:'' }}" placeholder="student@facemate.com" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-600 mb-1">Roll Number *</label>
+                            <input type="text" name="roll_number" required value="{{ student.roll_number|default:'' }}" placeholder="e.g., 1001" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-600 mb-1">Enrollment Number *</label>
+                            <input type="text" name="enrollment_number" required value="{{ student.enrollment_number|default:'' }}" {% if is_edit %}readonly{% endif %} placeholder="e.g., EN2024001" class="w-full px-4 py-2 border border-gray-300 rounded-lg {% if is_edit %}bg-gray-100{% endif %}">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-600 mb-1">Class *</label>
+                            <input type="text" name="class_name" required value="{{ student.class_name|default:default_class }}" readonly class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-600 mb-1">Section *</label>
+                            <input type="text" name="section" required value="{{ student.section|default:default_section }}" readonly class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100">
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="block text-sm font-medium text-gray-600 mb-1">Password {% if not is_edit %}*{% endif %}</label>
+                            <input type="password" name="password" {% if not is_edit %}required{% endif %} autocomplete="new-password" placeholder="{% if is_edit %}Leave blank to keep current password{% else %}Create a strong password{% endif %}" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Profile Photo -->
+                <div class="mb-8">
+                    <h2 class="text-xl font-semibold text-gray-700 border-b pb-2 mb-6">Profile Photo</h2>
+                    {% if student.photo %}
+                        <img src="{{ student.photo.url }}" id="profilePreview" class="w-32 h-32 rounded-full object-cover border-4 border-indigo-200 mb-4">
+                    {% else %}
+                        <img id="profilePreview" class="w-32 h-32 rounded-full object-cover border-4 border-indigo-200 mb-4 hidden">
+                    {% endif %}
+                    <div class="flex gap-4">
+                        <button type="button" onclick="captureProfilePhoto()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
+                            📷 Capture Photo
+                        </button>
+                        <label class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg cursor-pointer">
+                            📁 Upload File
+                            <input type="file" name="photo" id="photo" accept="image/*" class="hidden" onchange="previewFile(this)">
+                        </label>
+                    </div>
+                    <video id="profileVideo" autoplay class="hidden w-full max-w-md border-2 border-gray-300 rounded-lg mt-4"></video>
+                    <canvas id="profileCanvas" class="hidden"></canvas>
+                    <input type="hidden" name="photo_data" id="photo_data">
+                </div>
+
+                <!-- Face Dataset -->
+                <div class="mb-8">
+                    <h2 class="text-xl font-semibold text-gray-700 border-b pb-2 mb-6">Face Recognition Dataset (3+ photos required)</h2>
+                    <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
+                        <p class="text-sm text-yellow-700">📸 Upload at least 3 clear photos of the student's face from different angles for accurate recognition.</p>
+                    </div>
+                    <div class="flex gap-4 mb-4">
+                        <button type="button" onclick="startDatasetCapture()" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg">
+                            📷 Capture 3+ Photos
+                        </button>
+                        <label class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg cursor-pointer">
+                            📁 Upload Files
+                            <input type="file" name="images" id="images" multiple accept="image/*" class="hidden">
+                        </label>
+                    </div>
+                    
+                    <div id="datasetCameraView" class="hidden mb-4">
+                        <video id="datasetVideo" autoplay class="w-full max-w-md border-2 border-gray-300 rounded-lg mb-4"></video>
+                        <div class="flex gap-2">
+                            <button type="button" onclick="captureDatasetPhoto()" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg">
+                                📸 Take Photo (<span id="captureCount">0</span>)
+                            </button>
+                            <button type="button" onclick="stopDatasetCapture()" class="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg">
+                                Stop Camera
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div id="datasetPreview" class="grid grid-cols-3 gap-4 mt-4"></div>
+                </div>
+
+                <!-- Submit Button -->
+                <div class="flex justify-end gap-4">
+                    <a href="{% url 'view_students' %}" class="px-6 py-3 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400">Cancel</a>
+                    <button type="submit" id="submitBtn" class="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
+                        {% if is_edit %}Update Student{% else %}Register Student{% endif %}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('studentForm');
+        const submitBtn = document.getElementById('submitBtn');
+        let profileStream = null;
+        let datasetStream = null;
+        const capturedDatasetImages = [];
+
+        // Profile Photo Capture
+        async function captureProfilePhoto() {
+            const video = document.getElementById('profileVideo');
+            const canvas = document.getElementById('profileCanvas');
+            const preview = document.getElementById('profilePreview');
+            
+            try {
+                profileStream = await navigator.mediaDevices.getUserMedia({ video: true });
+                video.srcObject = profileStream;
+                video.classList.remove('hidden');
+                
+                setTimeout(() => {
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    canvas.getContext('2d').drawImage(video, 0, 0);
+                    const dataUrl = canvas.toDataURL('image/jpeg');
+                    
+                    preview.src = dataUrl;
+                    preview.classList.remove('hidden');
+                    document.getElementById('photo_data').value = dataUrl;
+                    document.getElementById('photo').removeAttribute('required');
+                    
+                    profileStream.getTracks().forEach(track => track.stop());
+                    video.classList.add('hidden');
+                }, 3000);
+            } catch (err) {
+                alert('Camera access denied or not available.');
+            }
+        }
+
+        // Dataset Capture
+        async function startDatasetCapture() {
+            const video = document.getElementById('datasetVideo');
+            const cameraView = document.getElementById('datasetCameraView');
+            
+            try {
+                datasetStream = await navigator.mediaDevices.getUserMedia({ video: true });
+                video.srcObject = datasetStream;
+                cameraView.classList.remove('hidden');
+            } catch (err) {
+                alert('Camera access denied or not available.');
+            }
+        }
+
+        function captureDatasetPhoto() {
+            const video = document.getElementById('datasetVideo');
+            const canvas = document.createElement('canvas');
+            const preview = document.getElementById('datasetPreview');
+            
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0);
+            
+            canvas.toBlob((blob) => {
+                capturedDatasetImages.push(blob);
+                
+                const img = document.createElement('img');
+                img.src = URL.createObjectURL(blob);
+                img.className = 'w-full h-32 object-cover rounded-lg border-2 border-green-500';
+                preview.appendChild(img);
+                
+                document.getElementById('captureCount').textContent = capturedDatasetImages.length;
+                
+                if (capturedDatasetImages.length >= 3) {
+                    document.getElementById('images').removeAttribute('required');
+                }
+            }, 'image/jpeg');
+        }
+
+        function stopDatasetCapture() {
+            if (datasetStream) {
+                datasetStream.getTracks().forEach(track => track.stop());
+                document.getElementById('datasetCameraView').classList.add('hidden');
+            }
+        }
+
+        function previewFile(input) {
+            const preview = document.getElementById('profilePreview');
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    preview.src = e.target.result;
+                    preview.classList.remove('hidden');
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        // Form submission
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const isEdit = {% if is_edit %}true{% else %}false{% endif %};
+            const fileInput = document.getElementById('images');
+            const numUploaded = fileInput && fileInput.files ? fileInput.files.length : 0;
+            const numCaptured = capturedDatasetImages.length;
+
+            if (!isEdit && (numUploaded + numCaptured < 3)) {
+                alert('Please upload or capture at least 3 photos for the face recognition dataset.');
+                return;
+            }
+            
+            submitBtn.textContent = isEdit ? 'Updating...' : 'Processing AI Data...';
+            submitBtn.disabled = true;
+            
+            const formData = new FormData(form);
+            
+            // Add captured profile photo
+            const photoData = document.getElementById('photo_data').value;
+            if (photoData) {
+                const blob = await (await fetch(photoData)).blob();
+                formData.set('photo', blob, 'profile.jpg');
+            }
+            
+            // Add captured dataset images
+            if (capturedDatasetImages.length > 0) {
+                formData.delete('images');
+                capturedDatasetImages.forEach((blob, index) => {
+                    formData.append('images', blob, `dataset_${index + 1}.jpg`);
+                });
+            }
+            
+            try {
+                const response = await fetch(form.action, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-CSRFToken': form.querySelector('[name=csrfmiddlewaretoken]').value
+                    }
+                });
+                
+                if (response.redirected) {
+                    window.location.href = response.url;
+                } else {
+                    const text = await response.text();
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(text, 'text/html');
+                    const errorElem = doc.querySelector('.bg-red-100, [role="alert"]');
+                    if (errorElem) {
+                        alert(errorElem.textContent.trim());
+                    } else if (response.ok) {
+                        window.location.href = "{% url 'view_students' %}";
+                        return;
+                    } else {
+                        alert('Error submitting form. Please check the entered data.');
+                    }
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = isEdit ? 'Update Student' : 'Register Student';
+                }
+            } catch (error) {
+                console.warn("AJAX student registration error, falling back to native form submission:", error);
+                try {
+                    if (capturedDatasetImages.length > 0 && fileInput) {
+                        const dt = new DataTransfer();
+                        if (fileInput.files) {
+                            for (let i = 0; i < fileInput.files.length; i++) {
+                                dt.items.add(fileInput.files[i]);
+                            }
+                        }
+                        capturedDatasetImages.forEach((blob, index) => {
+                            dt.items.add(new File([blob], `dataset_${index + 1}.jpg`, { type: 'image/jpeg' }));
+                        });
+                        fileInput.files = dt.files;
+                    }
+                    form.submit();
+                } catch (submitErr) {
+                    alert('Error saving student: ' + error.message);
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = isEdit ? 'Update Student' : 'Register Student';
+                }
+            }
+        });
+    </script>
+</body>
+</html>

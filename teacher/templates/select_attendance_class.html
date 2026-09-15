@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Select Class for Attendance</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+    <div class="w-full max-w-lg p-8 space-y-8 bg-white rounded-2xl shadow-lg">
+        <div class="text-center">
+            <h1 class="text-3xl font-bold text-gray-800">Take Attendance</h1>
+            <p class="mt-2 text-gray-600">Please select the class and section to begin.</p>
+        </div>
+        
+        {% if messages %}
+            {% for message in messages %}
+                <div class="p-4 mb-4 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <form method="GET" action="{% url 'live_attendance' %}" class="space-y-6">
+            <div>
+                <label for="class_name" class="block text-sm font-medium text-gray-700">Class</label>
+                <select id="class_name" name="class_name" required class="w-full px-4 py-3 mt-1 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500">
+                    <option value="">Select a Class</option>
+                    {% for class_name in classes %}
+                        <option value="{{ class_name }}">{{ class_name }}</option>
+                    {% empty %}
+                        <option value="" disabled>No classes found</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label for="section" class="block text-sm font-medium text-gray-700">Section</label>
+                <select id="section" name="section" required class="w-full px-4 py-3 mt-1 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500">
+                     <option value="">Select a Section</option>
+                    {% for section in sections %}
+                        <option value="{{ section }}">{{ section }}</option>
+                    {% empty %}
+                        <option value="" disabled>No sections found</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <button type="submit" class="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                    Start Camera
+                </button>
+            </div>
+        </form>
+        <div class="text-center mt-4">
+            <a href="{% url 'teacher_dashboard' %}" class="font-medium text-indigo-600 hover:text-indigo-500">Back to Dashboard</a>
+        </div>
+    </div>
+
+    <script>
+        const classSections = {{ class_sections_json|safe }};
+        const classSelect = document.getElementById('class_name');
+        const sectionSelect = document.getElementById('section');
+
+        function updateSections() {
+            const selectedClass = classSelect.value;
+            sectionSelect.innerHTML = '<option value="">Select a Section</option>';
+            if (selectedClass && classSections[selectedClass]) {
+                classSections[selectedClass].forEach(sec => {
+                    const opt = document.createElement('option');
+                    opt.value = sec;
+                    opt.textContent = sec;
+                    sectionSelect.appendChild(opt);
+                });
+                if (classSections[selectedClass].length === 1) {
+                    sectionSelect.value = classSections[selectedClass][0];
+                }
+            }
+        }
+
+        classSelect.addEventListener('change', updateSections);
+        if (classSelect.value) {
+            updateSections();
+        } else if (classSelect.options.length === 2) {
+            classSelect.selectedIndex = 1;
+            updateSections();
+        }
+    </script>
+</body>
+</html>
+

@@ -1,19 +1,100 @@
-<!-- home.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Home</title>
+    <title>FaceMate - Face Recognition Attendance System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background-attachment: fixed;
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        .card {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            -webkit-transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            -webkit-transform: translateY(-5px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
+        }
+        a {
+            text-decoration: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+    </style>
 </head>
 <body>
-    <h1>Welcome to the System</h1>
-    <nav>
-        <ul>
-            <li><a href="{{ url_for('student.login') }}">Student Login</a></li>
-            <li><a href="{{ url_for('teacher.login') }}">Teacher Login</a></li>
-            <li><a href="{{ url_for('developer.login') }}">Developer Login</a></li>
-        </ul>
-    </nav>
+    <div class="min-h-screen flex flex-col items-center justify-center px-4">
+        <!-- Header -->
+        <div class="text-center mb-12">
+            <div class="mb-6">
+                <span class="text-6xl">👨‍🎓</span>
+            </div>
+            <h1 class="text-5xl md:text-6xl font-extrabold text-white mb-4">
+                FaceMate
+            </h1>
+            <p class="text-xl md:text-2xl text-white opacity-90">
+                Face Recognition Attendance System
+            </p>
+            <p class="mt-2 text-lg text-white opacity-75">
+                Smart, Simple & Secure Attendance Tracking
+            </p>
+        </div>
+
+        <!-- Cards Container -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl w-full">
+            <!-- Teacher Card -->
+            <div class="card bg-white p-8 rounded-2xl shadow-2xl text-center">
+                <div class="text-5xl mb-4">👨‍🏫</div>
+                <h2 class="text-3xl font-bold text-gray-800 mb-3">Teacher Portal</h2>
+                <p class="text-gray-600 mb-6">
+                    Take attendance, view reports, and manage students with facial recognition
+                </p>
+                <a href="{% url 'teacher_login' %}" class="inline-block bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-bold py-3 px-8 rounded-lg transition duration-300 shadow-lg">
+                    Login as Teacher
+                </a>
+            </div>
+
+            <!-- Student Card -->
+            <div class="card bg-white p-8 rounded-2xl shadow-2xl text-center">
+                <div class="text-5xl mb-4">👨‍🎓</div>
+                <h2 class="text-3xl font-bold text-gray-800 mb-3">Student Portal</h2>
+                <p class="text-gray-600 mb-6">
+                    View your attendance records and course details
+                </p>
+                <a href="{% url 'student_login' %}" class="inline-block bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold py-3 px-8 rounded-lg transition duration-300 shadow-lg">
+                    Login as Student
+                </a>
+            </div>
+
+            <!-- Developer Card -->
+            <div class="card bg-white p-8 rounded-2xl shadow-2xl text-center">
+                <div class="text-5xl mb-4">👨‍💻</div>
+                <h2 class="text-3xl font-bold text-gray-800 mb-3">Developer Portal</h2>
+                <p class="text-gray-600 mb-6">
+                    Log in as developer to register students, manage AI datasets, and configure the system
+                </p>
+                <a href="{% url 'developer_login' %}" class="inline-block bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white font-bold py-3 px-8 rounded-lg transition duration-300 shadow-lg">
+                    Login as Developer
+                </a>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="mt-12 text-center text-white opacity-75">
+            <p class="text-sm">Powered by AI Face Recognition Technology</p>
+        </div>
+    </div>
 </body>
 </html>

@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Developer Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100">
+    <header class="bg-white shadow">
+        <div class="container mx-auto px-6 py-4 flex justify-between items-center">
+            <h1 class="text-xl font-bold text-gray-800">Developer Dashboard</h1>
+            <a href="{% url 'developer_logout' %}" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300">Logout</a>
+        </div>
+    </header>
+    <main class="container mx-auto p-6">
+        <div class="bg-white p-8 rounded-xl shadow-lg">
+            <h2 class="text-3xl font-bold text-gray-800 mb-6">Welcome, {{ developer.name }}!</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                
+                <!-- Student Management Panel -->
+                <div class="bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-lg border border-blue-200 shadow-md">
+                    <div class="flex items-center mb-4">
+                        <svg class="w-8 h-8 text-blue-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
+                        </svg>
+                        <h3 class="text-2xl font-semibold text-gray-800">Student Management</h3>
+                    </div>
+                    <div class="space-y-3">
+                        <a href="{% url 'manage_students' %}" class="block w-full text-center bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-4 rounded-lg transition duration-300 shadow-md">
+                            View & Edit Students
+                        </a>
+                        <a href="{% url 'student_register' %}" class="block w-full text-center bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-lg transition duration-300 shadow-md">
+                            Register New Student
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Teacher Management Panel -->
+                <div class="bg-gradient-to-br from-purple-50 to-purple-100 p-6 rounded-lg border border-purple-200 shadow-md">
+                    <div class="flex items-center mb-4">
+                        <svg class="w-8 h-8 text-purple-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                        </svg>
+                        <h3 class="text-2xl font-semibold text-gray-800">Teacher Management</h3>
+                    </div>
+                    <div class="space-y-3">
+                         <a href="{% url 'manage_teachers' %}" class="block w-full text-center bg-purple-500 hover:bg-purple-600 text-white font-bold py-3 px-4 rounded-lg transition duration-300 shadow-md">
+                            View & Edit Teachers
+                        </a>
+                        <a href="{% url 'teacher_register' %}" class="block w-full text-center bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-lg transition duration-300 shadow-md">
+                            Register New Teacher
+                        </a>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+</body>
+</html>
+

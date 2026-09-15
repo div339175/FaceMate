@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attendance Detail</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        @media print {
+            .no-print { display: none !important; }
+            body { background: white !important; }
+            .shadow-lg { box-shadow: none !important; border: 1px solid #e5e7eb; }
+        }
+    </style>
+    <script>
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        function toggleAttendance(recordId, button) {
+            const csrftoken = getCookie('csrftoken') || document.querySelector('[name=csrfmiddlewaretoken]')?.value;
+            
+            fetch(`/teacher/attendance/toggle/${recordId}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrftoken,
+                    'Content-Type': 'application/json',
+                },
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('Error: ' + (data.error || 'Failed to update attendance'));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Failed to update attendance status');
+            });
+        }
+    </script>
+</head>
+<body class="bg-gray-100">
+    <div style="display:none;">{% csrf_token %}</div>
+    <div class="container mx-auto p-8">
+        <div class="flex justify-between items-center mb-8">
+            <h1 class="text-3xl font-bold text-gray-800">Attendance Details</h1>
+            <div class="flex flex-wrap gap-2 no-print">
+                <button onclick="window.print()" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition duration-300 font-medium flex items-center gap-1 shadow-sm">
+                    🖨️ Print / Save PDF
+                </button>
+                <a href="{% url 'export_attendance' session.id %}" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition duration-300 font-medium flex items-center gap-1 shadow-sm">
+                    ⬇️ Export CSV
+                </a>
+                <a href="{% url 'select_attendance_class' %}" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition duration-300 font-medium shadow-sm">
+                    + Take Attendance
+                </a>
+                <a href="{% url 'attendance_history' %}" class="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition duration-300 font-medium shadow-sm">
+                    Back
+                </a>
+            </div>
+        </div>
+
+        <!-- Session Info -->
+        <div class="bg-white p-6 rounded-xl shadow-lg mb-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
+                <div>
+                    <p class="text-sm text-gray-600">Date</p>
+                    <p class="text-lg font-semibold text-gray-800">{{ session.session_date|date:"M d, Y" }}</p>
+                </div>
+                <div>
+                    <p class="text-sm text-gray-600">Time</p>
+                    <p class="text-lg font-semibold text-gray-800">{{ session.created_at|date:"h:i A" }}</p>
+                </div>
+                <div>
+                    <p class="text-sm text-gray-600">Class</p>
+                    <p class="text-lg font-semibold text-gray-800">{{ session.class_name }} - {{ session.section }}</p>
+                </div>
+                <div>
+                    <p class="text-sm text-gray-600">Total Students</p>
+                    <p class="text-lg font-semibold text-gray-800">{{ total }}</p>
+                </div>
+                <div>
+                    <p class="text-sm text-gray-600">Present</p>
+                    <p class="text-lg font-semibold text-green-600">{{ present }}</p>
+                </div>
+                <div>
+                    <p class="text-sm text-gray-600">Absent</p>
+                    <p class="text-lg font-semibold text-red-600">{{ absent }}</p>
+                </div>
+            </div>
+            <div class="mt-4">
+                <div class="flex items-center">
+                    <div class="flex-1 bg-gray-200 rounded-full h-4">
+                        <div class="bg-green-500 h-4 rounded-full flex items-center justify-end pr-2" style="width: {{ percentage }}%">
+                            <span class="text-xs font-semibold text-white">{{ percentage }}%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Attendance Records -->
+        <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+            <div class="px-6 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white">
+                <h2 class="text-xl font-semibold">Student Attendance</h2>
+            </div>
+            
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Roll No.</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Enrollment No.</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student Name</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for record in records %}
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                    {{ record.student.roll_number }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                                    {{ record.student.enrollment_number }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="flex items-center">
+                                        {% if record.student.photo %}
+                                            <img class="h-10 w-10 rounded-full object-cover" src="{{ record.student.photo.url }}" alt="">
+                                        {% else %}
+                                            <div class="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
+                                                <span class="text-indigo-600 font-medium text-sm">{{ record.student.name|slice:":1" }}</span>
+                                            </div>
+                                        {% endif %}
+                                        <div class="ml-3">
+                                            <p class="text-sm font-medium text-gray-900">{{ record.student.name }}</p>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                                    {{ record.student.email }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    {% if record.is_present %}
+                                        <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                            Present
+                                        </span>
+                                    {% else %}
+                                        <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                                            Absent
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                                    {{ record.timestamp|date:"h:i A" }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                    <button onclick="toggleAttendance({{ record.id }}, this)" 
+                                            class="px-3 py-1 text-xs font-medium rounded-md transition duration-300 {% if record.is_present %}bg-red-100 text-red-700 hover:bg-red-200{% else %}bg-green-100 text-green-700 hover:bg-green-200{% endif %}">
+                                        {% if record.is_present %}Mark Absent{% else %}Mark Present{% endif %}
+                                    </button>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

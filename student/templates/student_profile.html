@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Profile - FaceMate</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100">
+    <!-- Navigation -->
+    <nav class="bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg">
+        <div class="container mx-auto px-6 py-4">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center space-x-4">
+                    <span class="text-3xl">👨‍🎓</span>
+                    <h1 class="text-2xl font-bold">My Profile</h1>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <a href="{% url 'student_dashboard' %}" class="hover:underline">Dashboard</a>
+                    <a href="{% url 'student_logout' %}" class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded-lg">Logout</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mx-auto px-6 py-8 max-w-4xl">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="mb-6 p-4 rounded-lg {% if message.tags == 'error' %}bg-red-100 text-red-700{% else %}bg-green-100 text-green-700{% endif %}">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <div class="bg-white rounded-xl shadow-lg p-8">
+            <h2 class="text-3xl font-bold text-gray-800 mb-6">Student Profile</h2>
+            
+            <form method="POST" enctype="multipart/form-data">
+                {% csrf_token %}
+                
+                <!-- Profile Photo -->
+                <div class="mb-8 text-center">
+                    {% if student.photo %}
+                        <img src="{{ student.photo.url }}" alt="{{ student.name }}" 
+                             class="w-32 h-32 rounded-full object-cover border-4 border-blue-500 mx-auto mb-4">
+                    {% else %}
+                        <div class="w-32 h-32 rounded-full bg-blue-500 flex items-center justify-center text-white text-5xl font-bold mx-auto mb-4">
+                            {{ student.name.0 }}
+                        </div>
+                    {% endif %}
+                    <label class="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg inline-block">
+                        Change Photo
+                        <input type="file" name="photo" accept="image/*" class="hidden">
+                    </label>
+                </div>
+
+                <!-- Read-only Information -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <div>
+                        <label class="block text-gray-700 font-bold mb-2">Full Name</label>
+                        <input type="text" value="{{ student.name }}" disabled
+                               class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed">
+                        <p class="text-sm text-gray-500 mt-1">Contact admin to change</p>
+                    </div>
+
+                    <div>
+                        <label class="block text-gray-700 font-bold mb-2">Roll Number</label>
+                        <input type="text" value="{{ student.roll_number }}" disabled
+                               class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed">
+                    </div>
+
+                    <div>
+                        <label class="block text-gray-700 font-bold mb-2">Enrollment Number</label>
+                        <input type="text" value="{{ student.enrollment_number }}" disabled
+                               class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed">
+                    </div>
+
+                    <div>
+                        <label class="block text-gray-700 font-bold mb-2">Class</label>
+                        <input type="text" value="{{ student.class_name }}-{{ student.section }}" disabled
+                               class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed">
+                    </div>
+                </div>
+
+                <!-- Editable Information -->
+                <div class="border-t pt-6 mb-6">
+                    <h3 class="text-xl font-bold text-gray-800 mb-4">Editable Information</h3>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-gray-700 font-bold mb-2">Email Address *</label>
+                            <input type="email" name="email" value="{{ student.email }}" required
+                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                        </div>
+
+                        <div>
+                            <label class="block text-gray-700 font-bold mb-2">New Password</label>
+                            <input type="password" name="password" placeholder="Leave blank to keep current"
+                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                            <p class="text-sm text-gray-500 mt-1">Leave blank if you don't want to change</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex space-x-4">
+                    <button type="submit"
+                            class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition duration-300">
+                        💾 Save Changes
+                    </button>
+                    <a href="{% url 'student_dashboard' %}"
+                       class="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-3 px-6 rounded-lg text-center transition duration-300">
+                        Cancel
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</body>
+</html>
